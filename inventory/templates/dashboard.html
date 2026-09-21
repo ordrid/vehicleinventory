@@ -1,62 +1,66 @@
 {% extends 'base.html' %}
+{% from 'partials/_icons.html' import icon %}
 {% block title %}Dashboard &middot; Vehicle Inventory{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold mb-4">Dashboard</h1>
+<div class="mb-6">
+  <h1 class="page-title">Welcome back, {{ current_username }}</h1>
+  <p class="mt-1 text-sm text-muted">Here is how the fleet looks right now.</p>
+</div>
 
-<div class="stats stats-vertical sm:stats-horizontal shadow bg-base-100 w-full mb-6">
-  <div class="stat">
-    <div class="stat-title">All vehicles</div>
-    <div class="stat-value">{{ total }}</div>
-    <div class="stat-desc">in the inventory</div>
+{# The total gets its own banner; the four statuses then fill one clean row.
+   Each icon colour matches the status pill used in the tables. #}
+<div class="card mb-4 flex items-center gap-5 p-6">
+  <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white">
+    {{ icon('car', 'h-7 w-7') }}
+  </span>
+  <div>
+    <p class="text-sm font-medium text-muted">All Vehicles</p>
+    <p class="text-4xl font-extrabold leading-tight tracking-tight text-ink">{{ total }}</p>
   </div>
-  {% for status in STATUSES %}
-    <div class="stat">
-      <div class="stat-title">{{ status }}</div>
-      <div class="stat-value">{{ counts[status] }}</div>
-      <div class="stat-desc">
-        <span class="badge badge-sm {{ STATUS_BADGES[status] }}">{{ status }}</span>
+</div>
+
+{% set tiles = [
+  ('Available',         counts['Available'],         'check',   'bg-emerald-500'),
+  ('In Use',            counts['In Use'],            'car',     'bg-sky-500'),
+  ('Under Maintenance', counts['Under Maintenance'], 'wrench',  'bg-amber-500'),
+  ('Retired',           counts['Retired'],           'archive', 'bg-slate-500')
+] %}
+
+<div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  {% for label, value, name, tint in tiles %}
+    <div class="card flex items-center gap-4 p-5">
+      <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl {{ tint }} text-white">
+        {{ icon(name, 'h-6 w-6') }}
+      </span>
+      <div class="min-w-0">
+        <p class="truncate text-sm font-medium text-muted">{{ label }}</p>
+        <p class="text-2xl font-bold tracking-tight text-ink">{{ value }}</p>
       </div>
     </div>
   {% endfor %}
 </div>
 
+<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Quick actions</h2>
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-  <div class="card bg-base-100 shadow-sm">
-    <div class="card-body">
-      <h2 class="card-title text-base">View Vehicles</h2>
-      <p class="text-sm opacity-70">Browse the full list, sorted and paginated.</p>
-      <div class="card-actions justify-end">
-        <a class="btn btn-sm btn-primary" href="{{ url_for('vehicles.list_vehicles') }}">Open</a>
+  {% set actions = [
+    ('vehicles.list_vehicles', 'View Vehicles', 'Browse the full list, sorted and paginated.', 'car'),
+    ('vehicles.add_vehicle',   'Add Vehicle',   'Register a new vehicle in the inventory.',    'plus'),
+    ('vehicles.search',        'Search',        'Find a vehicle by plate, make or model.',     'search'),
+    ('reports.reports',        'Reports',       'Summaries, printing and CSV export.',         'report')
+  ] %}
+  {% for endpoint, title, description, name in actions %}
+    <a href="{{ url_for(endpoint) }}"
+       class="card group flex flex-col gap-3 p-5 transition hover:border-brand-500/40 hover:shadow-md">
+      <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600
+                   transition group-hover:bg-brand-500 group-hover:text-white">
+        {{ icon(name) }}
+      </span>
+      <div>
+        <p class="font-semibold text-ink">{{ title }}</p>
+        <p class="mt-0.5 text-sm leading-relaxed text-muted">{{ description }}</p>
       </div>
-    </div>
-  </div>
-  <div class="card bg-base-100 shadow-sm">
-    <div class="card-body">
-      <h2 class="card-title text-base">Add Vehicle</h2>
-      <p class="text-sm opacity-70">Register a new vehicle in the inventory.</p>
-      <div class="card-actions justify-end">
-        <a class="btn btn-sm btn-primary" href="{{ url_for('vehicles.add_vehicle') }}">Open</a>
-      </div>
-    </div>
-  </div>
-  <div class="card bg-base-100 shadow-sm">
-    <div class="card-body">
-      <h2 class="card-title text-base">Search</h2>
-      <p class="text-sm opacity-70">Find a vehicle by plate, make or model.</p>
-      <div class="card-actions justify-end">
-        <a class="btn btn-sm btn-primary" href="{{ url_for('vehicles.search') }}">Open</a>
-      </div>
-    </div>
-  </div>
-  <div class="card bg-base-100 shadow-sm">
-    <div class="card-body">
-      <h2 class="card-title text-base">Reports</h2>
-      <p class="text-sm opacity-70">Summaries, printing and CSV export.</p>
-      <div class="card-actions justify-end">
-        <a class="btn btn-sm btn-primary" href="{{ url_for('reports.reports') }}">Open</a>
-      </div>
-    </div>
-  </div>
+    </a>
+  {% endfor %}
 </div>
 {% endblock %}

@@ -1,26 +1,30 @@
 {% extends 'base.html' %}
 {% from 'partials/_vehicle_table.html' import vehicle_table %}
 {% from 'partials/_pagination.html' import pagination %}
+{% from 'partials/_icons.html' import icon %}
 {% block title %}Vehicles &middot; Vehicle Inventory{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-  <h1 class="text-2xl font-semibold">Vehicles</h1>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="page-title">Vehicles</h1>
+    <p class="mt-1 text-sm text-muted">
+      {{ total }} vehicle{{ '' if total == 1 else 's' }} in the inventory
+    </p>
+  </div>
   <div class="flex gap-2">
-    <a class="btn btn-sm" href="{{ url_for('vehicles.search') }}">Search</a>
-    <a class="btn btn-sm btn-primary" href="{{ url_for('vehicles.add_vehicle') }}">Add Vehicle</a>
+    <a class="btn btn-ghost" href="{{ url_for('vehicles.search') }}">{{ icon('search', 'h-4 w-4') }} Search</a>
+    <a class="btn btn-primary" href="{{ url_for('vehicles.add_vehicle') }}">{{ icon('plus', 'h-4 w-4') }} Add Vehicle</a>
   </div>
 </div>
 
-<div class="card bg-base-100 shadow-sm">
-  <div class="card-body p-0 sm:p-2">
-    {{ vehicle_table(vehicles, sort, direction, 'No vehicles yet. Add the first one to get started.') }}
-  </div>
+<div class="card overflow-hidden">
+  {{ vehicle_table(vehicles, sort, direction, 'No vehicles yet. Add the first one to get started.') }}
 </div>
 
 {{ pagination(page, total_pages) }}
 
-<p class="text-center text-sm opacity-60 mt-2">
-  {{ total }} vehicle{{ '' if total == 1 else 's' }} &middot; page {{ page }} of {{ total_pages }}
-</p>
+{% if total_pages > 1 %}
+  <p class="mt-2 text-center text-xs text-muted">Page {{ page }} of {{ total_pages }}</p>
+{% endif %}
 {% endblock %}

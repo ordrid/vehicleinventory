@@ -1,45 +1,52 @@
 {# Vehicle listing table, shared by the Vehicles page and the Search page. #}
+{% from 'partials/_icons.html' import icon %}
 
 {% macro sort_header(label, key, sort, direction) %}
   {% set next_dir = 'desc' if (sort == key and direction == 'asc') else 'asc' %}
   {% set params = request.args.to_dict() %}
   {% set _ = params.update({'sort': key, 'dir': next_dir, 'page': 1}) %}
-  <a class="link link-hover whitespace-nowrap" href="{{ url_for(request.endpoint, **params) }}">
-    {{ label }}{% if sort == key %} {{ '▲' if direction == 'asc' else '▼' }}{% endif %}
+  <a class="inline-flex items-center gap-1 whitespace-nowrap transition hover:text-brand-500
+            {% if sort == key %}text-brand-500{% endif %}"
+     href="{{ url_for(request.endpoint, **params) }}">
+    {{ label }}
+    {% if sort == key %}
+      <span aria-hidden="true">{{ '↑' if direction == 'asc' else '↓' }}</span>
+      <span class="sr-only">sorted {{ 'ascending' if direction == 'asc' else 'descending' }}</span>
+    {% endif %}
   </a>
 {% endmacro %}
 
 {% macro vehicle_table(vehicles, sort, direction, empty_message) %}
   {% if vehicles %}
     <div class="overflow-x-auto">
-      <table class="table table-zebra">
+      <table class="data-table">
         <thead>
           <tr>
             <th>{{ sort_header('Plate', 'plate', sort, direction) }}</th>
-            <th>{{ sort_header('Make', 'make', sort, direction) }}</th>
-            <th>Model</th>
-            <th>{{ sort_header('Year', 'year', sort, direction) }}</th>
-            <th>Type</th>
-            <th>Color</th>
+            <th class="hidden sm:table-cell">{{ sort_header('Make', 'make', sort, direction) }}</th>
+            <th class="hidden sm:table-cell">Model</th>
+            <th class="hidden md:table-cell">{{ sort_header('Year', 'year', sort, direction) }}</th>
+            <th class="hidden lg:table-cell">Type</th>
+            <th class="hidden lg:table-cell">Color</th>
             <th>Status</th>
-            <th class="no-print">Actions</th>
+            <th class="no-print text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for vehicle in vehicles %}
             <tr>
-              <td class="font-mono font-semibold">{{ vehicle.plate_number }}</td>
-              <td>{{ vehicle.make }}</td>
-              <td>{{ vehicle.model }}</td>
-              <td>{{ vehicle.year }}</td>
-              <td>{{ vehicle.vehicle_type }}</td>
-              <td>{{ vehicle.color or '—' }}</td>
-              <td><span class="badge {{ vehicle.badge_class }}">{{ vehicle.status }}</span></td>
+              <td class="whitespace-nowrap font-mono text-xs font-semibold tracking-tight sm:text-[13px]">{{ vehicle.plate_number }}</td>
+              <td class="hidden font-medium sm:table-cell">{{ vehicle.make }}</td>
+              <td class="hidden text-muted sm:table-cell">{{ vehicle.model }}</td>
+              <td class="hidden text-muted md:table-cell">{{ vehicle.year }}</td>
+              <td class="hidden text-muted lg:table-cell">{{ vehicle.vehicle_type }}</td>
+              <td class="hidden text-muted lg:table-cell">{{ vehicle.color or '—' }}</td>
+              <td><span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span></td>
               <td class="no-print">
-                <div class="flex gap-1">
-                  <a class="btn btn-xs btn-outline"
+                <div class="flex flex-col items-stretch gap-1.5 sm:flex-row sm:justify-end sm:gap-2">
+                  <a class="btn btn-sm btn-primary"
                      href="{{ url_for('vehicles.edit_vehicle', vehicle_id=vehicle.id) }}">Edit</a>
-                  <a class="btn btn-xs btn-outline btn-error"
+                  <a class="btn btn-sm btn-ghost text-red-600 hover:bg-red-50"
                      href="{{ url_for('vehicles.delete_vehicle', vehicle_id=vehicle.id) }}">Delete</a>
                 </div>
               </td>
@@ -49,6 +56,11 @@
       </table>
     </div>
   {% else %}
-    <p class="p-6 text-center opacity-70">{{ empty_message }}</p>
+    <div class="flex flex-col items-center gap-3 px-6 py-16 text-center">
+      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+        {{ icon('car', 'h-6 w-6') }}
+      </span>
+      <p class="text-sm text-muted">{{ empty_message }}</p>
+    </div>
   {% endif %}
 {% endmacro %}

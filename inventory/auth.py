@@ -54,15 +54,10 @@ def login():
     if form.validate_on_submit():
         user = find_user_by_username(form.username.data.strip())
         if user is not None and user.check_password(form.password.data):
-            # Clear any previous session, but carry the theme choice across so
-            # logging in does not throw away the visitor's light/dark setting.
-            chosen_theme = session.get("theme")
             session.clear()
-            if chosen_theme:
-                session["theme"] = chosen_theme
             session["user_id"] = user.id
             session["username"] = user.username
-            flash(f"Welcome back, {user.username}!", "success")
+            flash("Signed in successfully.", "success")
             return redirect(safe_next_page(request.args.get("next")))
         flash("Invalid username or password.", "error")
 
@@ -72,10 +67,7 @@ def login():
 @bp.route("/logout", methods=["POST"])
 def logout():
     """Clear the session and send the user back to the login page."""
-    chosen_theme = session.get("theme")
     session.clear()
-    if chosen_theme:
-        session["theme"] = chosen_theme
     flash("You have been logged out.", "success")
     return redirect(url_for("auth.login"))
 

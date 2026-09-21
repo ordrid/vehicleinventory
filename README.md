@@ -6,7 +6,7 @@ a normal HTML page, there is no JavaScript framework, and the only JavaScript
 in the whole project is the one-line `window.print()` on the Reports page.
 
 **Stack:** Python 3.12 · Flask · Jinja2 · SQLAlchemy 2.x · psycopg 3 ·
-Flask-WTF · Tailwind CSS v4 + daisyUI v5 · Neon Postgres (SQLite locally) ·
+Flask-WTF · Tailwind CSS v4 · Neon Postgres (SQLite locally) ·
 deployed on Vercel.
 
 ## Features
@@ -20,7 +20,6 @@ deployed on Vercel.
 | **Search** | Case-insensitive partial match across plate number, make and model, with status and type filters. Searches are plain `GET` requests, so a result page can be bookmarked. |
 | **Edit Vehicle** | The same form as Add, pre-filled, with the same validation rules. |
 | **Delete Vehicle** | A confirmation page first; the deletion itself only happens on `POST`, so nothing can be deleted by following a link. |
-| **Dark mode** | An Auto / Light / Dark switch in the navbar (and on the login page). The choice is kept in the Flask session, so it follows you from page to page and survives logging in and out. |
 | **Reports** | Counts by status, by vehicle type and by year acquired, a print-friendly stylesheet with a Print button, and a CSV export of every vehicle. |
 
 Flash messages confirm every action, and there are custom 404 and 500 pages.
@@ -69,10 +68,13 @@ database, run the same commands locally with `DATABASE_URL` pointing at Neon.
 
 ## CSS
 
-Tailwind and daisyUI are used through the **standalone Tailwind CLI**, so
-Node and npm are not needed anywhere. The CLI comes from the `pytailwindcss`
-dev dependency, and daisyUI is the pair of `.mjs` files committed in
-`inventory/static/src/`.
+Tailwind is used through the **standalone Tailwind CLI**, so Node and npm are
+not needed anywhere. The CLI comes from the `pytailwindcss` dev dependency.
+
+There is no component library. The interface is built from plain Tailwind
+utilities plus a small set of project classes (`.card`, `.btn`, `.pill`,
+`.field`, `.data-table`, `.nav-link`) defined in `input.css`, which keeps the
+built stylesheet at roughly 31 KB.
 
 ```bash
 # while working on templates
@@ -85,9 +87,10 @@ uv run tailwindcss -i inventory/static/src/input.css -o inventory/static/css/out
 `inventory/static/css/output.css` is **committed to Git** on purpose: Vercel
 then needs no build step at all, it just serves the file.
 
-Two themes are configured in `input.css`: `emerald` (light) and `forest`
-(dark). The **Auto / Light / Dark** switch in the navbar picks between them —
-see *Dark mode* below.
+The palette, fonts and component classes all live in `inventory/static/src/input.css`:
+a dark navy sidebar, a light content area, blue primary actions, and four status
+pill colours kept far apart in hue so they stay easy to tell apart, including
+when printed.
 
 The first `tailwindcss` run downloads the CLI binary. If that fails with an SSL
 certificate error, point Python at your system CA bundle:
@@ -96,38 +99,16 @@ certificate error, point Python at your system CA bundle:
 SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt uv run tailwindcss ...
 ```
 
-## Dark mode
-
-The navbar has an **Auto / Light / Dark** switch, and there is a second copy on
-the login page.
-
-It uses no JavaScript. Each button is a submit button in one small `POST` form;
-`inventory/theme.py` stores the choice in the Flask session and every page then
-renders it as a `data-theme` attribute on the `<html>` element:
-
-| Choice | `<html>` | Result |
-|---|---|---|
-| Auto (default) | `<html lang="en">` | No `data-theme`, so daisyUI's `prefers-color-scheme` rule follows the operating system |
-| Light | `<html lang="en" data-theme="emerald">` | Always light |
-| Dark | `<html lang="en" data-theme="forest">` | Always dark |
-
-Auto works because daisyUI scopes its dark rule to `:root:not([data-theme])`,
-so setting the attribute at all overrides the system preference.
-
-The trade-off of doing this server-side is that switching theme reloads the
-page. In exchange the project stays completely free of client-side JavaScript,
-and the choice is remembered without needing `localStorage`.
-
 ## Tests
 
 ```bash
 uv run pytest
 ```
 
-35 tests run against an in-memory SQLite database and cover login success and
+26 tests run against an in-memory SQLite database and cover login success and
 failure, adding a vehicle (including the duplicate-plate and year-range
 errors), viewing and paginating and sorting the list, searching and filtering,
-editing, deleting, the reports page and CSV export, and the theme switch.
+editing, deleting, and the reports page and CSV export.
 
 ## Deploying to Vercel (Hobby tier)
 
@@ -171,15 +152,12 @@ inventory/
   models.py                  User and Vehicle
   forms.py                   LoginForm, VehicleForm, DeleteForm
   auth.py                    login, logout, @login_required
-  theme.py                   light / dark switching via the session
   vehicles.py                dashboard, CRUD and search routes
   reports.py                 reports page and CSV export
   cli.py                     init-db, create-admin, seed
   templates/                 base.html, one template per page, partials/
   static/
-    src/input.css            Tailwind + daisyUI source
-    src/daisyui.mjs          daisyUI standalone plugin
-    src/daisyui-theme.mjs
+    src/input.css            Tailwind source: theme tokens + component classes
     css/output.css           built and committed
 tests/                       pytest suite (in-memory SQLite)
 ```

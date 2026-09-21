@@ -21,7 +21,9 @@ NEW_VEHICLE = {
 def test_dashboard_shows_totals(auth_client, sample_vehicle):
     response = auth_client.get("/")
     assert response.status_code == 200
-    assert b"All vehicles" in response.data
+    assert b"All Vehicles" in response.data
+    # One vehicle, and it is Available, so both those tiles must read 1.
+    assert response.data.count(b">1</p>") == 2
     assert b"Available" in response.data
 
 

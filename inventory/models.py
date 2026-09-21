@@ -12,13 +12,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 VEHICLE_TYPES = ["Sedan", "SUV", "Pickup", "Van", "Truck", "Motorcycle"]
 STATUSES = ["Available", "In Use", "Under Maintenance", "Retired"]
 
-# daisyUI badge class per status. Both themes (emerald / forest) keep these
-# four colours clearly distinguishable.
+# The status pill colour for each status. Kept deliberately far apart in hue
+# so the four states stay easy to tell apart, including in a printout.
 STATUS_BADGES = {
-    "Available": "badge-success",
-    "In Use": "badge-info",
-    "Under Maintenance": "badge-warning",
-    "Retired": "badge-neutral",
+    "Available": "pill-green",
+    "In Use": "pill-blue",
+    "Under Maintenance": "pill-amber",
+    "Retired": "pill-slate",
 }
 
 
@@ -75,8 +75,8 @@ class Vehicle(Base):
 
     @property
     def badge_class(self) -> str:
-        """Return the daisyUI badge class that matches this vehicle's status."""
-        return STATUS_BADGES.get(self.status, "badge-neutral")
+        """Return the status pill colour class that matches this vehicle's status."""
+        return STATUS_BADGES.get(self.status, "pill-slate")
 
     def __repr__(self) -> str:
         return f"<Vehicle {self.plate_number} {self.make} {self.model}>"

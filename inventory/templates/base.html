@@ -1,58 +1,83 @@
-{% from 'partials/_theme_switch.html' import theme_switch with context %}
+{% from 'partials/_icons.html' import icon %}
 <!DOCTYPE html>
-{# No data-theme at all means "auto": the stylesheet then follows the
-   operating system via prefers-color-scheme. #}
-<html lang="en"{% if theme_name %} data-theme="{{ theme_name }}"{% endif %}>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Vehicle Inventory{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
 </head>
-<body class="min-h-screen bg-base-200 flex flex-col">
+<body>
 
-  {% if current_username %}
-  <div class="navbar bg-base-100 shadow-sm no-print">
-    <div class="navbar-start">
-      <div class="dropdown lg:hidden">
-        <div tabindex="0" role="button" class="btn btn-ghost" aria-label="Open menu">☰</div>
-        <ul tabindex="0" class="menu dropdown-content bg-base-100 rounded-box z-10 mt-2 w-56 p-2 shadow">
-          {% include 'partials/_nav_links.html' %}
-          <li class="menu-title pt-2">Theme</li>
-          <li>{{ theme_switch('btn-sm') }}</li>
-        </ul>
+{% if current_username %}
+  {# ---- Fixed sidebar (large screens) --------------------------------- #}
+  <aside class="no-print fixed inset-y-0 left-0 z-20 hidden w-64 flex-col bg-navy-800 lg:flex">
+    <div class="flex items-center gap-2.5 px-6 py-6">
+      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white">
+        {{ icon('car', 'h-5 w-5') }}
+      </span>
+      <div class="leading-tight">
+        <p class="text-[15px] font-extrabold leading-tight tracking-tight text-white">Vehicle Inventory</p>
+        <p class="text-[11px] font-medium text-slate-400">Management System</p>
       </div>
-      <a class="btn btn-ghost text-lg font-semibold" href="{{ url_for('vehicles.dashboard') }}">
-        Vehicle Inventory
-      </a>
     </div>
-    <div class="navbar-center hidden lg:flex">
-      <ul class="menu menu-horizontal px-1">
-        {% include 'partials/_nav_links.html' %}
-      </ul>
-    </div>
-    <div class="navbar-end gap-2">
-      <div class="hidden sm:block">{{ theme_switch() }}</div>
-      <span class="hidden md:inline text-sm opacity-70">{{ current_username }}</span>
+
+    <nav class="flex flex-1 flex-col gap-1 px-4">
+      {% include 'partials/_nav_links.html' %}
+    </nav>
+
+    <div class="border-t border-white/10 p-4">
+      <p class="px-3 pb-2 text-xs text-slate-400">Signed in as</p>
+      <p class="px-3 pb-3 text-sm font-semibold text-white">{{ current_username }}</p>
       <form method="post" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-sm btn-outline">Log out</button>
+        <button type="submit" class="nav-link w-full">
+          {{ icon('logout') }}<span>Log out</span>
+        </button>
       </form>
     </div>
-  </div>
-  {% endif %}
+  </aside>
 
-  <main class="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-6">
+  {# ---- Top bar with a no-JavaScript drop-down (small screens) --------- #}
+  <header class="no-print sticky top-0 z-30 bg-navy-800 lg:hidden">
+    <details class="group">
+      <summary class="flex cursor-pointer list-none items-center justify-between px-4 py-4">
+        <span class="flex items-center gap-2.5">
+          <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-white">
+            {{ icon('car', 'h-4 w-4') }}
+          </span>
+          <span class="text-base font-extrabold tracking-tight text-white">Vehicle Inventory</span>
+        </span>
+        <span class="text-slate-300">{{ icon('menu', 'h-6 w-6') }}</span>
+      </summary>
+      <nav class="flex flex-col gap-1 px-4 pb-4">
+        {% include 'partials/_nav_links.html' %}
+        <form method="post" action="{{ url_for('auth.logout') }}" class="mt-1 border-t border-white/10 pt-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="nav-link w-full">
+            {{ icon('logout') }}<span>Log out ({{ current_username }})</span>
+          </button>
+        </form>
+      </nav>
+    </details>
+  </header>
+{% endif %}
+
+<main class="app-main {% if current_username %}lg:ml-64{% endif %} min-h-screen p-4 sm:p-6 lg:p-8">
+  <div class="mx-auto w-full max-w-6xl">
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="mb-4 space-y-2 no-print">
+        <div class="no-print mb-5 space-y-2.5">
           {% for category, message in messages %}
-            {% set alert_class = {
-              'success': 'alert-success',
-              'error': 'alert-error',
-              'warning': 'alert-warning'
+            {% set style = {
+              'success': 'alert-success', 'error': 'alert-error', 'warning': 'alert-warning'
             }.get(category, 'alert-info') %}
-            <div role="alert" class="alert {{ alert_class }}">
+            <div role="alert" class="alert {{ style }}">
               <span>{{ message }}</span>
             </div>
           {% endfor %}
@@ -61,11 +86,8 @@
     {% endwith %}
 
     {% block content %}{% endblock %}
-  </main>
-
-  <footer class="footer footer-center p-4 text-sm opacity-60 no-print">
-    <span>Vehicle Inventory System &middot; Python final project</span>
-  </footer>
+  </div>
+</main>
 
 </body>
 </html>

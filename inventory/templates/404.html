@@ -2,13 +2,13 @@
 {% block title %}Page not found &middot; Vehicle Inventory{% endblock %}
 
 {% block content %}
-<div class="hero min-h-[50vh]">
-  <div class="hero-content text-center">
-    <div>
-      <p class="text-6xl font-bold opacity-30">404</p>
-      <h1 class="text-2xl font-semibold mt-2">Page not found</h1>
-      <p class="opacity-70 mt-1">That page or vehicle does not exist.</p>
-      <a class="btn btn-primary mt-4" href="{{ url_for('vehicles.dashboard') }}">Back to dashboard</a>
+<div class="flex min-h-[60vh] items-center justify-center">
+  <div class="card max-w-md px-8 py-12 text-center">
+    <p class="text-6xl font-extrabold tracking-tight text-slate-200">404</p>
+    <h1 class="mt-3 text-xl font-bold text-ink">Page not found</h1>
+    <p class="mt-1.5 text-sm text-muted">That page or vehicle does not exist.</p>
+    <div class="mt-6">
+      <a class="btn btn-primary" href="{{ url_for('vehicles.dashboard') }}">Back to dashboard</a>
     </div>
   </div>
 </div>

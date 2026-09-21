@@ -1,74 +1,66 @@
 {# The vehicle fields, shared by the Add and Edit pages so both validate identically. #}
 
 {% macro errors(field) %}
-  {% if field.errors %}
-    {% for message in field.errors %}
-      <p class="label text-error">{{ message }}</p>
-    {% endfor %}
-  {% endif %}
+  {% for message in field.errors %}
+    <p class="field-error">{{ message }}</p>
+  {% endfor %}
 {% endmacro %}
 
-<fieldset class="fieldset">
-  <legend class="fieldset-legend">Vehicle details</legend>
+{% macro invalid(field) %}{% if field.errors %} field-invalid{% endif %}{% endmacro %}
 
-  <div class="grid gap-4 sm:grid-cols-2">
-    <div>
-      <label class="label" for="{{ form.plate_number.id }}">Plate number *</label>
-      {{ form.plate_number(class="input w-full" ~ (" input-error" if form.plate_number.errors else ""),
-                           placeholder="ABC 1234", required=true) }}
-      {{ errors(form.plate_number) }}
-      <p class="label">Saved in upper case; must be unique.</p>
-    </div>
-
-    <div>
-      <label class="label" for="{{ form.status.id }}">Status *</label>
-      {{ form.status(class="select w-full" ~ (" select-error" if form.status.errors else "")) }}
-      {{ errors(form.status) }}
-    </div>
-
-    <div>
-      <label class="label" for="{{ form.make.id }}">Make *</label>
-      {{ form.make(class="input w-full" ~ (" input-error" if form.make.errors else ""),
-                   placeholder="Toyota", required=true) }}
-      {{ errors(form.make) }}
-    </div>
-
-    <div>
-      <label class="label" for="{{ form.model.id }}">Model *</label>
-      {{ form.model(class="input w-full" ~ (" input-error" if form.model.errors else ""),
-                    placeholder="Hilux", required=true) }}
-      {{ errors(form.model) }}
-    </div>
-
-    <div>
-      <label class="label" for="{{ form.year.id }}">Year *</label>
-      {{ form.year(class="input w-full" ~ (" input-error" if form.year.errors else ""),
-                   type="number", min=1950, max=max_year, required=true) }}
-      {{ errors(form.year) }}
-    </div>
-
-    <div>
-      <label class="label" for="{{ form.vehicle_type.id }}">Type *</label>
-      {{ form.vehicle_type(class="select w-full" ~ (" select-error" if form.vehicle_type.errors else "")) }}
-      {{ errors(form.vehicle_type) }}
-    </div>
-
-    <div>
-      <label class="label" for="{{ form.color.id }}">Color</label>
-      {{ form.color(class="input w-full", placeholder="White") }}
-      {{ errors(form.color) }}
-    </div>
-
-    <div>
-      <label class="label" for="{{ form.date_acquired.id }}">Date acquired</label>
-      {{ form.date_acquired(class="input w-full", type="date") }}
-      {{ errors(form.date_acquired) }}
-    </div>
-
-    <div class="sm:col-span-2">
-      <label class="label" for="{{ form.remarks.id }}">Remarks</label>
-      {{ form.remarks(class="textarea w-full", rows=3, placeholder="Anything worth noting about this vehicle") }}
-      {{ errors(form.remarks) }}
-    </div>
+<div class="grid gap-5 sm:grid-cols-2">
+  <div>
+    <label class="field-label" for="{{ form.plate_number.id }}">Plate number <span class="text-red-500">*</span></label>
+    {{ form.plate_number(class="field" ~ invalid(form.plate_number), placeholder="ABC 1234", required=true) }}
+    {{ errors(form.plate_number) }}
+    <p class="field-hint">Saved in upper case. Must be unique.</p>
   </div>
-</fieldset>
+
+  <div>
+    <label class="field-label" for="{{ form.status.id }}">Status <span class="text-red-500">*</span></label>
+    {{ form.status(class="field" ~ invalid(form.status)) }}
+    {{ errors(form.status) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.make.id }}">Make <span class="text-red-500">*</span></label>
+    {{ form.make(class="field" ~ invalid(form.make), placeholder="Toyota", required=true) }}
+    {{ errors(form.make) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.model.id }}">Model <span class="text-red-500">*</span></label>
+    {{ form.model(class="field" ~ invalid(form.model), placeholder="Hilux", required=true) }}
+    {{ errors(form.model) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.year.id }}">Year <span class="text-red-500">*</span></label>
+    {{ form.year(class="field" ~ invalid(form.year), type="number", min=1950, max=max_year, required=true) }}
+    {{ errors(form.year) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.vehicle_type.id }}">Type <span class="text-red-500">*</span></label>
+    {{ form.vehicle_type(class="field" ~ invalid(form.vehicle_type)) }}
+    {{ errors(form.vehicle_type) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.color.id }}">Color</label>
+    {{ form.color(class="field", placeholder="White") }}
+    {{ errors(form.color) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.date_acquired.id }}">Date acquired</label>
+    {{ form.date_acquired(class="field", type="date") }}
+    {{ errors(form.date_acquired) }}
+  </div>
+
+  <div class="sm:col-span-2">
+    <label class="field-label" for="{{ form.remarks.id }}">Remarks</label>
+    {{ form.remarks(class="field", rows=3, placeholder="Anything worth noting about this vehicle") }}
+    {{ errors(form.remarks) }}
+  </div>
+</div>

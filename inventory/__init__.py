@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, session, url_for
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
-from . import auth, cli, db, reports, theme, vehicles
+from . import auth, cli, db, reports, vehicles
 from .forms import max_year
 from .models import STATUS_BADGES, STATUSES, VEHICLE_TYPES
 
@@ -37,7 +37,6 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(auth.bp)
     app.register_blueprint(vehicles.bp)
     app.register_blueprint(reports.bp)
-    app.register_blueprint(theme.bp)
     cli.register_cli(app)
     register_template_globals(app)
     register_error_handlers(app)
@@ -56,9 +55,6 @@ def register_template_globals(app: Flask) -> None:
             "STATUS_BADGES": STATUS_BADGES,
             "current_username": session.get("username"),
             "max_year": max_year(),
-            # Which theme button to highlight, and what to put in data-theme.
-            "theme_choice": theme.current_choice(),
-            "theme_name": theme.current_theme_name(),
         }
 
 

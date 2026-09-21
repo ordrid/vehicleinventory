@@ -1,36 +1,83 @@
 {% extends 'base.html' %}
-{% from 'partials/_theme_switch.html' import theme_switch with context %}
+{% from 'partials/_icons.html' import icon %}
 {% block title %}Log in &middot; Vehicle Inventory{% endblock %}
 
 {% block content %}
-<div class="min-h-[60vh] flex items-center justify-center">
-  <div class="card bg-base-100 shadow-md w-full max-w-sm">
-    <div class="card-body">
-      <h1 class="card-title text-2xl">Vehicle Inventory</h1>
-      <p class="text-sm opacity-70">Sign in to manage the fleet.</p>
+<div class="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+  <div class="grid w-full max-w-4xl overflow-hidden rounded-2xl shadow-xl md:grid-cols-2">
 
-      <form method="post" class="mt-2">
+    {# ---- Form panel ------------------------------------------------- #}
+    <div class="bg-navy-800 px-8 py-12 sm:px-10">
+      <div class="mb-8 flex items-center gap-3">
+        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500 text-white">
+          {{ icon('car', 'h-6 w-6') }}
+        </span>
+        <div class="leading-tight">
+          <p class="text-lg font-extrabold tracking-tight text-white">Vehicle Inventory</p>
+          <p class="text-xs font-medium text-slate-400">Management System</p>
+        </div>
+      </div>
+
+      <h1 class="text-xl font-bold text-white">Sign in</h1>
+      <p class="mt-1 text-sm text-slate-400">Enter your details to manage the fleet.</p>
+
+      <form method="post" class="mt-7 space-y-4">
         {{ form.hidden_tag() }}
 
-        <fieldset class="fieldset">
-          <label class="label" for="{{ form.username.id }}">Username</label>
-          {{ form.username(class="input w-full", autofocus=true, required=true) }}
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-200"
+                 for="{{ form.username.id }}">Username</label>
+          {{ form.username(class="field border-transparent bg-white/95", autofocus=true,
+                           required=true, placeholder="admin") }}
           {% for message in form.username.errors %}
-            <p class="label text-error">{{ message }}</p>
+            <p class="mt-1.5 text-xs font-medium text-red-300">{{ message }}</p>
           {% endfor %}
+        </div>
 
-          <label class="label mt-2" for="{{ form.password.id }}">Password</label>
-          {{ form.password(class="input w-full", required=true) }}
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-200"
+                 for="{{ form.password.id }}">Password</label>
+          {{ form.password(class="field border-transparent bg-white/95", required=true,
+                           placeholder="••••••••") }}
           {% for message in form.password.errors %}
-            <p class="label text-error">{{ message }}</p>
+            <p class="mt-1.5 text-xs font-medium text-red-300">{{ message }}</p>
           {% endfor %}
-        </fieldset>
+        </div>
 
-        {{ form.submit(class="btn btn-primary w-full mt-4") }}
+        {{ form.submit(class="btn btn-primary w-full") }}
       </form>
-
-      <div class="flex justify-center mt-4">{{ theme_switch() }}</div>
     </div>
+
+    {# ---- Decorative panel. Hidden on small screens, where it would just
+           push the form off the fold. Drawn in CSS so the project ships no
+           image files and needs no external requests. ------------------ #}
+    <div class="relative hidden overflow-hidden bg-navy-900 md:block" aria-hidden="true">
+      <div class="absolute inset-0"
+           style="background:
+             radial-gradient(130% 100% at 80% 5%, #2f6fd0 0%, transparent 60%);"></div>
+
+      {# Faint grid, for the 'operations console' feel. #}
+      <div class="absolute inset-0 opacity-[0.16]"
+           style="background-image:
+             linear-gradient(to right, #ffffff 1px, transparent 1px),
+             linear-gradient(to bottom, #ffffff 1px, transparent 1px);
+             background-size: 44px 44px;"></div>
+
+      <div class="relative flex h-full flex-col justify-end gap-5 p-10">
+        <span class="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/20">
+          {{ icon('car', 'h-9 w-9') }}
+        </span>
+        <div>
+          <p class="text-2xl font-bold leading-snug text-white">
+            Every vehicle,<br>accounted for.
+          </p>
+          <p class="mt-2.5 max-w-xs text-sm leading-relaxed text-slate-300">
+            Track plates, status and maintenance across the whole fleet from one dashboard.
+          </p>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 {% endblock %}

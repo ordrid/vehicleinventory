@@ -15,7 +15,7 @@ def test_login_with_correct_credentials_reaches_dashboard(client):
     )
     assert response.status_code == 200
     assert b"Dashboard" in response.data
-    assert b"Welcome back, admin!" in response.data
+    assert b"Signed in successfully." in response.data
 
 
 def test_login_with_wrong_password_shows_error(client):
@@ -62,3 +62,13 @@ def test_custom_500_page_is_shown_when_a_view_raises(app):
     response = app.test_client().get("/boom")
     assert response.status_code == 500
     assert b"Something went wrong" in response.data
+
+
+def test_expired_csrf_token_shows_a_friendly_message(app):
+    """A stale tab should get a flash message, not Flask-WTF's bare 400 page."""
+    app.config["WTF_CSRF_ENABLED"] = True
+    client = app.test_client()
+
+    response = client.post("/logout", follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Your session expired." in response.data
