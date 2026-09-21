@@ -1,5 +1,8 @@
+{% from 'partials/_theme_switch.html' import theme_switch with context %}
 <!DOCTYPE html>
-<html lang="en">
+{# No data-theme at all means "auto": the stylesheet then follows the
+   operating system via prefers-color-scheme. #}
+<html lang="en"{% if theme_name %} data-theme="{{ theme_name }}"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,6 +18,8 @@
         <div tabindex="0" role="button" class="btn btn-ghost" aria-label="Open menu">☰</div>
         <ul tabindex="0" class="menu dropdown-content bg-base-100 rounded-box z-10 mt-2 w-56 p-2 shadow">
           {% include 'partials/_nav_links.html' %}
+          <li class="menu-title pt-2">Theme</li>
+          <li>{{ theme_switch('btn-sm') }}</li>
         </ul>
       </div>
       <a class="btn btn-ghost text-lg font-semibold" href="{{ url_for('vehicles.dashboard') }}">
@@ -27,7 +32,8 @@
       </ul>
     </div>
     <div class="navbar-end gap-2">
-      <span class="hidden sm:inline text-sm opacity-70">{{ current_username }}</span>
+      <div class="hidden sm:block">{{ theme_switch() }}</div>
+      <span class="hidden md:inline text-sm opacity-70">{{ current_username }}</span>
       <form method="post" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-sm btn-outline">Log out</button>

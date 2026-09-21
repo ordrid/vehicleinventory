@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'partials/_theme_switch.html' import theme_switch with context %}
 {% block title %}Log in &middot; Vehicle Inventory{% endblock %}
 
 {% block content %}
@@ -27,6 +28,8 @@
 
         {{ form.submit(class="btn btn-primary w-full mt-4") }}
       </form>
+
+      <div class="flex justify-center mt-4">{{ theme_switch() }}</div>
     </div>
   </div>
 </div>
