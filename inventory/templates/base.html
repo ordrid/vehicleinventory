@@ -1,4 +1,5 @@
 {% from 'partials/_icons.html' import icon %}
+{% from 'partials/_flashes.html' import flashes with context %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,26 +68,16 @@
   </header>
 {% endif %}
 
-<main class="app-main {% if current_username %}lg:ml-64{% endif %} min-h-screen p-4 sm:p-6 lg:p-8">
-  <div class="mx-auto w-full max-w-6xl">
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="no-print mb-5 space-y-2.5">
-          {% for category, message in messages %}
-            {% set style = {
-              'success': 'alert-success', 'error': 'alert-error', 'warning': 'alert-warning'
-            }.get(category, 'alert-info') %}
-            <div role="alert" class="alert {{ style }}">
-              <span>{{ message }}</span>
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-
-    {% block content %}{% endblock %}
-  </div>
+{# Pages override `main` when they need the full width of the window, which
+   the login page does for its split layout. Everything else uses the padded,
+   centred column below. #}
+<main class="app-main {% if current_username %}lg:ml-64{% endif %} min-h-screen">
+  {% block main %}
+    <div class="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-8">
+      {{ flashes() }}
+      {% block content %}{% endblock %}
+    </div>
+  {% endblock %}
 </main>
 
 </body>

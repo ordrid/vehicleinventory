@@ -99,6 +99,31 @@ certificate error, point Python at your system CA bundle:
 SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt uv run tailwindcss ...
 ```
 
+## The login photograph
+
+`inventory/static/img/login-car.{webp,jpg}` is a photo by
+[Olav Tvedt](https://unsplash.com/@olavtvedt) from
+[Unsplash](https://unsplash.com/photos/-oVaYMgBMbs), used under the
+[Unsplash License](https://unsplash.com/license) (free to use, no attribution
+required — credited here anyway).
+
+The 4000x6000, 3.1 MB original was optimised with ImageMagick down to
+1200x1800:
+
+```bash
+magick original.jpg -auto-orient -resize 1200x1800^ -strip \
+  -interlace Plane -sampling-factor 4:2:0 -quality 80 \
+  inventory/static/img/login-car.jpg
+
+magick original.jpg -auto-orient -resize 1200x1800^ -strip \
+  -quality 76 -define webp:method=6 \
+  inventory/static/img/login-car.webp
+```
+
+That gives a 52 KB WebP with a 139 KB JPEG fallback — 98% smaller than the
+original. The page uses a `<picture>` element so browsers pick whichever they
+support.
+
 ## Tests
 
 ```bash
