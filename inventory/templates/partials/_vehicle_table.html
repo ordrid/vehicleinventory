@@ -1,0 +1,54 @@
+{# Vehicle listing table, shared by the Vehicles page and the Search page. #}
+
+{% macro sort_header(label, key, sort, direction) %}
+  {% set next_dir = 'desc' if (sort == key and direction == 'asc') else 'asc' %}
+  {% set params = request.args.to_dict() %}
+  {% set _ = params.update({'sort': key, 'dir': next_dir, 'page': 1}) %}
+  <a class="link link-hover whitespace-nowrap" href="{{ url_for(request.endpoint, **params) }}">
+    {{ label }}{% if sort == key %} {{ '▲' if direction == 'asc' else '▼' }}{% endif %}
+  </a>
+{% endmacro %}
+
+{% macro vehicle_table(vehicles, sort, direction, empty_message) %}
+  {% if vehicles %}
+    <div class="overflow-x-auto">
+      <table class="table table-zebra">
+        <thead>
+          <tr>
+            <th>{{ sort_header('Plate', 'plate', sort, direction) }}</th>
+            <th>{{ sort_header('Make', 'make', sort, direction) }}</th>
+            <th>Model</th>
+            <th>{{ sort_header('Year', 'year', sort, direction) }}</th>
+            <th>Type</th>
+            <th>Color</th>
+            <th>Status</th>
+            <th class="no-print">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vehicle in vehicles %}
+            <tr>
+              <td class="font-mono font-semibold">{{ vehicle.plate_number }}</td>
+              <td>{{ vehicle.make }}</td>
+              <td>{{ vehicle.model }}</td>
+              <td>{{ vehicle.year }}</td>
+              <td>{{ vehicle.vehicle_type }}</td>
+              <td>{{ vehicle.color or '—' }}</td>
+              <td><span class="badge {{ vehicle.badge_class }}">{{ vehicle.status }}</span></td>
+              <td class="no-print">
+                <div class="flex gap-1">
+                  <a class="btn btn-xs btn-outline"
+                     href="{{ url_for('vehicles.edit_vehicle', vehicle_id=vehicle.id) }}">Edit</a>
+                  <a class="btn btn-xs btn-outline btn-error"
+                     href="{{ url_for('vehicles.delete_vehicle', vehicle_id=vehicle.id) }}">Delete</a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="p-6 text-center opacity-70">{{ empty_message }}</p>
+  {% endif %}
+{% endmacro %}

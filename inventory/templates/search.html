@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% from 'partials/_vehicle_table.html' import vehicle_table %}
+{% from 'partials/_pagination.html' import pagination %}
+{% block title %}Search &middot; Vehicle Inventory{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Search Vehicles</h1>
+
+{# A plain GET form, so a search can be bookmarked and shared as a URL. #}
+<form method="get" class="card bg-base-100 shadow-sm mb-4">
+  <div class="card-body">
+    <fieldset class="fieldset">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="sm:col-span-3">
+          <label class="label" for="q">Plate, make or model</label>
+          <input class="input w-full" type="search" id="q" name="q" value="{{ term }}"
+                 placeholder="e.g. ABC, Toyota, Hilux">
+        </div>
+        <div>
+          <label class="label" for="status">Status</label>
+          <select class="select w-full" id="status" name="status">
+            <option value="">Any status</option>
+            {% for option in STATUSES %}
+              <option value="{{ option }}" {% if option == status %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label" for="type">Type</label>
+          <select class="select w-full" id="type" name="type">
+            <option value="">Any type</option>
+            {% for option in VEHICLE_TYPES %}
+              <option value="{{ option }}" {% if option == vehicle_type %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex items-end gap-2">
+          <button type="submit" class="btn btn-primary">Search</button>
+          <a class="btn btn-ghost" href="{{ url_for('vehicles.search') }}">Reset</a>
+        </div>
+      </div>
+    </fieldset>
+  </div>
+</form>
+
+<div class="card bg-base-100 shadow-sm">
+  <div class="card-body p-0 sm:p-2">
+    {% if searched %}
+      {{ vehicle_table(vehicles, sort, direction, 'No vehicles matched your search.') }}
+    {% else %}
+      {{ vehicle_table(vehicles, sort, direction, 'No vehicles yet.') }}
+    {% endif %}
+  </div>
+</div>
+
+{{ pagination(page, total_pages) }}
+
+<p class="text-center text-sm opacity-60 mt-2">
+  {{ total }} result{{ '' if total == 1 else 's' }}{% if searched %} for your filters{% endif %}
+</p>
+{% endblock %}

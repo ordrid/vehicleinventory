@@ -1,0 +1,16 @@
+{# daisyUI "join" pagination. Every other query parameter is carried across. #}
+
+{% macro pagination(page, total_pages) %}
+  {% if total_pages > 1 %}
+    <div class="flex justify-center mt-4 no-print">
+      <div class="join">
+        {% for number in range(1, total_pages + 1) %}
+          {% set params = request.args.to_dict() %}
+          {% set _ = params.update({'page': number}) %}
+          <a class="join-item btn btn-sm {% if number == page %}btn-active{% endif %}"
+             href="{{ url_for(request.endpoint, **params) }}">{{ number }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+{% endmacro %}

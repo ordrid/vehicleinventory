@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard &middot; Vehicle Inventory{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Dashboard</h1>
+
+<div class="stats stats-vertical sm:stats-horizontal shadow bg-base-100 w-full mb-6">
+  <div class="stat">
+    <div class="stat-title">All vehicles</div>
+    <div class="stat-value">{{ total }}</div>
+    <div class="stat-desc">in the inventory</div>
+  </div>
+  {% for status in STATUSES %}
+    <div class="stat">
+      <div class="stat-title">{{ status }}</div>
+      <div class="stat-value">{{ counts[status] }}</div>
+      <div class="stat-desc">
+        <span class="badge badge-sm {{ STATUS_BADGES[status] }}">{{ status }}</span>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-base">View Vehicles</h2>
+      <p class="text-sm opacity-70">Browse the full list, sorted and paginated.</p>
+      <div class="card-actions justify-end">
+        <a class="btn btn-sm btn-primary" href="{{ url_for('vehicles.list_vehicles') }}">Open</a>
+      </div>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-base">Add Vehicle</h2>
+      <p class="text-sm opacity-70">Register a new vehicle in the inventory.</p>
+      <div class="card-actions justify-end">
+        <a class="btn btn-sm btn-primary" href="{{ url_for('vehicles.add_vehicle') }}">Open</a>
+      </div>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-base">Search</h2>
+      <p class="text-sm opacity-70">Find a vehicle by plate, make or model.</p>
+      <div class="card-actions justify-end">
+        <a class="btn btn-sm btn-primary" href="{{ url_for('vehicles.search') }}">Open</a>
+      </div>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-base">Reports</h2>
+      <p class="text-sm opacity-70">Summaries, printing and CSV export.</p>
+      <div class="card-actions justify-end">
+        <a class="btn btn-sm btn-primary" href="{{ url_for('reports.reports') }}">Open</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

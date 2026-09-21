@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Reports &middot; Vehicle Inventory{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+  <h1 class="text-2xl font-semibold">Reports</h1>
+  <div class="flex gap-2 no-print">
+    <a class="btn btn-sm btn-outline" href="{{ url_for('reports.export_csv') }}">Export CSV</a>
+    {# The only JavaScript in the app, and the page works fine without it. #}
+    <button type="button" class="btn btn-sm btn-primary" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+<p class="text-sm opacity-60 mb-4">
+  {{ total }} vehicle{{ '' if total == 1 else 's' }} in total &middot;
+  generated {{ generated_at.strftime('%d %b %Y %H:%M') }} UTC
+</p>
+
+<div class="grid gap-4 lg:grid-cols-2">
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-lg">Vehicles by status</h2>
+      <div class="overflow-x-auto">
+        <table class="table table-zebra">
+          <thead><tr><th>Status</th><th class="text-right">Count</th></tr></thead>
+          <tbody>
+            {% for status, count in by_status %}
+              <tr>
+                <td><span class="badge {{ STATUS_BADGES[status] }}">{{ status }}</span></td>
+                <td class="text-right font-semibold">{{ count }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot><tr><th>Total</th><th class="text-right">{{ total }}</th></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title text-lg">Vehicles by type</h2>
+      <div class="overflow-x-auto">
+        <table class="table table-zebra">
+          <thead><tr><th>Type</th><th class="text-right">Count</th></tr></thead>
+          <tbody>
+            {% for vehicle_type, count in by_type %}
+              <tr><td>{{ vehicle_type }}</td><td class="text-right font-semibold">{{ count }}</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot><tr><th>Total</th><th class="text-right">{{ total }}</th></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm lg:col-span-2">
+    <div class="card-body">
+      <h2 class="card-title text-lg">Vehicles by year acquired</h2>
+      <div class="overflow-x-auto">
+        <table class="table table-zebra">
+          <thead><tr><th>Year acquired</th><th class="text-right">Count</th></tr></thead>
+          <tbody>
+            {% for year, count in by_year %}
+              <tr><td>{{ year }}</td><td class="text-right font-semibold">{{ count }}</td></tr>
+            {% else %}
+              <tr><td colspan="2" class="text-center opacity-70">No vehicles recorded yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

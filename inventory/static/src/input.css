@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@source "../../templates";
+@plugin "./daisyui.mjs" {
+  themes: emerald --default, forest --prefersdark;
+}
+
+/* The status badge classes are chosen in Python (models.STATUS_BADGES), so they
+   never appear literally in a template and Tailwind cannot find them by scanning.
+   Listing them here keeps them in the build. */
+@source inline("badge-success badge-info badge-warning badge-neutral");
+
+/* Print styles, used mainly by the Reports page: drop the navigation, the
+   buttons and the page background so only the tables reach the paper. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .card {
+    background: #fff;
+    box-shadow: none;
+    border: 1px solid #ccc;
+    break-inside: avoid;
+  }
+
+  .badge {
+    border: 1px solid #666;
+    background: transparent;
+    color: #000;
+  }
+
+  .table :is(th, td) {
+    border-bottom: 1px solid #ddd;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+}

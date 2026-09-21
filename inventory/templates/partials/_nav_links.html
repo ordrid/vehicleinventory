@@ -1,0 +1,6 @@
+{# Navigation entries, shared by the desktop menu and the mobile dropdown. #}
+<li><a href="{{ url_for('vehicles.dashboard') }}" {% if request.endpoint == 'vehicles.dashboard' %}class="menu-active"{% endif %}>Dashboard</a></li>
+<li><a href="{{ url_for('vehicles.list_vehicles') }}" {% if request.endpoint == 'vehicles.list_vehicles' %}class="menu-active"{% endif %}>Vehicles</a></li>
+<li><a href="{{ url_for('vehicles.add_vehicle') }}" {% if request.endpoint == 'vehicles.add_vehicle' %}class="menu-active"{% endif %}>Add Vehicle</a></li>
+<li><a href="{{ url_for('vehicles.search') }}" {% if request.endpoint == 'vehicles.search' %}class="menu-active"{% endif %}>Search</a></li>
+<li><a href="{{ url_for('reports.reports') }}" {% if request.endpoint == 'reports.reports' %}class="menu-active"{% endif %}>Reports</a></li>

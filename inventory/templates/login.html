@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Log in &middot; Vehicle Inventory{% endblock %}
+
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center">
+  <div class="card bg-base-100 shadow-md w-full max-w-sm">
+    <div class="card-body">
+      <h1 class="card-title text-2xl">Vehicle Inventory</h1>
+      <p class="text-sm opacity-70">Sign in to manage the fleet.</p>
+
+      <form method="post" class="mt-2">
+        {{ form.hidden_tag() }}
+
+        <fieldset class="fieldset">
+          <label class="label" for="{{ form.username.id }}">Username</label>
+          {{ form.username(class="input w-full", autofocus=true, required=true) }}
+          {% for message in form.username.errors %}
+            <p class="label text-error">{{ message }}</p>
+          {% endfor %}
+
+          <label class="label mt-2" for="{{ form.password.id }}">Password</label>
+          {{ form.password(class="input w-full", required=true) }}
+          {% for message in form.password.errors %}
+            <p class="label text-error">{{ message }}</p>
+          {% endfor %}
+        </fieldset>
+
+        {{ form.submit(class="btn btn-primary w-full mt-4") }}
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
