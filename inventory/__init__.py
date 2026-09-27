@@ -49,11 +49,18 @@ def register_template_globals(app: Flask) -> None:
 
     @app.context_processor
     def inject_globals():
+        role = auth.current_role()
         return {
             "STATUSES": STATUSES,
             "VEHICLE_TYPES": VEHICLE_TYPES,
             "STATUS_BADGES": STATUS_BADGES,
             "current_username": session.get("username"),
+            # Templates use these to decide which chrome and which actions to
+            # render. `is_editor` is the one that hides Add / Edit / Delete;
+            # `is_guest` drives the read-only banner and the sidebar footer.
+            "current_role": role,
+            "is_guest": role == "guest",
+            "is_editor": role == "user",
             "max_year": max_year(),
         }
 
@@ -72,6 +79,15 @@ def register_error_handlers(app: Flask) -> None:
         """
         flash("Your session expired. Please try that again.", "warning")
         return redirect(url_for("vehicles.dashboard"))
+
+    @app.errorhandler(403)
+    def forbidden(error):
+        """Explain that this page needs an account, instead of Flask's bare 403.
+
+        Reached when a guest asks for a page that changes data, either by
+        typing the URL or by following a stale link.
+        """
+        return render_template("403.html"), 403
 
     @app.errorhandler(404)
     def not_found(error):

@@ -6,7 +6,7 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from .auth import login_required
+from .auth import editor_required, viewer_required
 from .db import get_session
 from .forms import DeleteForm, VehicleForm
 from .models import STATUSES, VEHICLE_TYPES, Vehicle
@@ -79,7 +79,7 @@ def paginate(query, page: int):
 
 
 @bp.route("/")
-@login_required
+@viewer_required
 def dashboard():
     """Show the totals for the whole fleet: how many vehicles, and how many per status."""
     db = get_session()
@@ -97,7 +97,7 @@ def dashboard():
 
 
 @bp.route("/vehicles")
-@login_required
+@viewer_required
 def list_vehicles():
     """List every vehicle in a table, 10 per page, sortable by plate, make or year."""
     sort = request.args.get("sort", "plate")
@@ -118,8 +118,21 @@ def list_vehicles():
     )
 
 
+@bp.route("/vehicles/<int:vehicle_id>")
+@viewer_required
+def view_vehicle(vehicle_id: int):
+    """Show one vehicle's full record, including the fields the table leaves out.
+
+    Read-only, so guests can reach it. The template shows Edit and Delete only
+    to signed-in users. ``/vehicles/add`` never reaches this route because the
+    ``int`` converter refuses to match the word "add".
+    """
+    vehicle = get_vehicle_or_404(vehicle_id)
+    return render_template("vehicle_detail.html", vehicle=vehicle)
+
+
 @bp.route("/vehicles/add", methods=["GET", "POST"])
-@login_required
+@editor_required
 def add_vehicle():
     """Show the new-vehicle form and save it when everything validates.
 
@@ -153,7 +166,7 @@ def add_vehicle():
 
 
 @bp.route("/vehicles/<int:vehicle_id>/edit", methods=["GET", "POST"])
-@login_required
+@editor_required
 def edit_vehicle(vehicle_id: int):
     """Show the edit form pre-filled with the vehicle's details and save the changes.
 
@@ -186,7 +199,7 @@ def edit_vehicle(vehicle_id: int):
 
 
 @bp.route("/vehicles/<int:vehicle_id>/delete", methods=["GET", "POST"])
-@login_required
+@editor_required
 def delete_vehicle(vehicle_id: int):
     """Ask for confirmation on GET, and actually delete the vehicle on POST.
 
@@ -209,7 +222,7 @@ def delete_vehicle(vehicle_id: int):
 
 
 @bp.route("/search")
-@login_required
+@viewer_required
 def search():
     """Search vehicles by plate, make or model and filter by status and type.
 

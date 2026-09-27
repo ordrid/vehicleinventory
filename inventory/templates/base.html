@@ -1,5 +1,9 @@
 {% from 'partials/_icons.html' import icon %}
 {% from 'partials/_flashes.html' import flashes with context %}
+{# The login and sign-up pages own the whole window, so they get no sidebar and
+   no banner. A guest can reach them while still holding a session, which is
+   why the endpoint is checked rather than just the role. #}
+{% set show_chrome = current_role and request.endpoint not in ['auth.login', 'auth.signup'] %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,7 +18,7 @@
 </head>
 <body>
 
-{% if current_username %}
+{% if show_chrome %}
   {# ---- Fixed sidebar (large screens) --------------------------------- #}
   <aside class="no-print fixed inset-y-0 left-0 z-20 hidden w-64 flex-col bg-navy-800 lg:flex">
     <div class="flex items-center gap-2.5 px-6 py-6">
@@ -32,14 +36,28 @@
     </nav>
 
     <div class="border-t border-white/10 p-4">
-      <p class="px-3 pb-2 text-xs text-slate-400">Signed in as</p>
-      <p class="px-3 pb-3 text-sm font-semibold text-white">{{ current_username }}</p>
-      <form method="post" action="{{ url_for('auth.logout') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="nav-link w-full">
-          {{ icon('logout') }}<span>Log out</span>
-        </button>
-      </form>
+      {% if is_guest %}
+        <p class="px-3 pb-2 text-xs text-slate-400">Browsing as</p>
+        <p class="px-3 pb-3">
+          <span class="pill bg-amber-400/20 text-amber-200">{{ icon('eye', 'h-3.5 w-3.5') }} Guest &middot; read-only</span>
+        </p>
+        <a class="btn btn-primary w-full" href="{{ url_for('auth.login') }}">Sign in</a>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="mt-1">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="nav-link w-full">
+            {{ icon('logout') }}<span>Exit guest</span>
+          </button>
+        </form>
+      {% else %}
+        <p class="px-3 pb-2 text-xs text-slate-400">Signed in as</p>
+        <p class="px-3 pb-3 text-sm font-semibold text-white">{{ current_username }}</p>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="nav-link w-full">
+            {{ icon('logout') }}<span>Log out</span>
+          </button>
+        </form>
+      {% endif %}
     </div>
   </aside>
 
@@ -57,10 +75,14 @@
       </summary>
       <nav class="flex flex-col gap-1 px-4 pb-4">
         {% include 'partials/_nav_links.html' %}
+        {% if is_guest %}
+          <a class="nav-link" href="{{ url_for('auth.login') }}">{{ icon('logout') }}<span>Sign in</span></a>
+        {% endif %}
         <form method="post" action="{{ url_for('auth.logout') }}" class="mt-1 border-t border-white/10 pt-2">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="nav-link w-full">
-            {{ icon('logout') }}<span>Log out ({{ current_username }})</span>
+            {{ icon('logout') }}
+            <span>{% if is_guest %}Exit guest{% else %}Log out ({{ current_username }}){% endif %}</span>
           </button>
         </form>
       </nav>
@@ -71,7 +93,19 @@
 {# Pages override `main` when they need the full width of the window, which
    the login page does for its split layout. Everything else uses the padded,
    centred column below. #}
-<main class="app-main {% if current_username %}lg:ml-64{% endif %} min-h-screen">
+<main class="app-main {% if show_chrome %}lg:ml-64{% endif %} min-h-screen">
+  {# Guests get one persistent reminder that nothing here can be changed,
+     rather than discovering it when an action they expected is missing. #}
+  {% if is_guest and show_chrome %}
+    <div class="no-print flex flex-wrap items-center justify-center gap-x-2 gap-y-1
+                border-b border-amber-200 bg-amber-100 px-4 py-2.5 text-center
+                text-sm font-medium text-amber-900">
+      {{ icon('eye', 'h-4 w-4 shrink-0') }}
+      <span>You are browsing in read-only mode.</span>
+      <a class="font-semibold underline decoration-amber-500 decoration-2 underline-offset-2 hover:text-amber-950"
+         href="{{ url_for('auth.login') }}">Sign in to make changes</a>
+    </div>
+  {% endif %}
   {% block main %}
     <div class="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-8">
       {{ flashes() }}

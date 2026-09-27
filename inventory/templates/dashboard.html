@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="mb-6">
-  <h1 class="page-title">Welcome back, {{ current_username }}</h1>
+  <h1 class="page-title">{% if current_username %}Welcome back, {{ current_username }}{% else %}Fleet overview{% endif %}</h1>
   <p class="mt-1 text-sm text-muted">Here is how the fleet looks right now.</p>
 </div>
 

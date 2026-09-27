@@ -14,15 +14,29 @@ deployed on Vercel.
 | Page | What it does |
 |---|---|
 | **Login / Logout** | Session-based sign in. Every other page redirects here when you are not logged in. Passwords are stored as `werkzeug.security` hashes, never in plain text. |
+| **Guest access** | A **Continue as guest** button on the login page starts a read-only session with no account behind it. A guest can browse, search, view and export, but every page that changes data answers 403. |
 | **Dashboard** | Total vehicles plus a count for each status, and links to every other function. |
 | **Add Vehicle** | Validated form. A duplicate plate number gives a friendly message on the field instead of a database error. |
 | **View Vehicles** | Table of all vehicles, 10 per page, sortable by plate, make or year. |
+| **Vehicle Detail** | The full record for one vehicle, including remarks and acquisition date. Read-only, so it is what a guest gets in place of Edit. |
 | **Search** | Case-insensitive partial match across plate number, make and model, with status and type filters. Searches are plain `GET` requests, so a result page can be bookmarked. |
 | **Edit Vehicle** | The same form as Add, pre-filled, with the same validation rules. |
 | **Delete Vehicle** | A confirmation page first; the deletion itself only happens on `POST`, so nothing can be deleted by following a link. |
 | **Reports** | Counts by status, by vehicle type and by year acquired, a print-friendly stylesheet with a Print button, and a CSV export of every vehicle. |
 
-Flash messages confirm every action, and there are custom 404 and 500 pages.
+Flash messages confirm every action, and there are custom 403, 404 and 500 pages.
+
+### Roles
+
+There are two kinds of session and no roles table. `auth.current_role()` derives
+the role from the session cookie: `"user"` when it holds a `user_id`, `"guest"`
+when it holds the `guest` flag, `None` otherwise. Two decorators use it:
+
+- `@viewer_required` — user or guest; anonymous visitors go to the login page.
+- `@editor_required` — user only; a guest gets a 403.
+
+Templates get `current_role`, `is_guest` and `is_editor` from the context
+processor and use them to hide the actions a guest cannot take.
 
 ## Data model
 
@@ -178,7 +192,7 @@ inventory/
   db.py                      engine, sessions, get_database_url()
   models.py                  User and Vehicle
   forms.py                   LoginForm, SignupForm, VehicleForm, DeleteForm
-  auth.py                    signup, login, logout, @login_required
+  auth.py                    signup, login, logout, guest, the role decorators
   vehicles.py                dashboard, CRUD and search routes
   reports.py                 reports page and CSV export
   cli.py                     init-db, create-admin, seed

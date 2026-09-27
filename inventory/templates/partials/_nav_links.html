@@ -1,19 +1,23 @@
 {# Sidebar navigation. Shared by the desktop rail and the mobile drop-down. #}
 {% from 'partials/_icons.html' import icon %}
 
+{# The last value marks a link as editor-only, so a guest never sees a page
+   they would only be refused on. #}
 {% set links = [
-  ('vehicles.dashboard',     'Dashboard',   'dashboard'),
-  ('vehicles.list_vehicles', 'Vehicles',    'car'),
-  ('vehicles.add_vehicle',   'Add Vehicle', 'plus'),
-  ('vehicles.search',        'Search',      'search'),
-  ('reports.reports',        'Reports',     'report')
+  ('vehicles.dashboard',     'Dashboard',   'dashboard', false),
+  ('vehicles.list_vehicles', 'Vehicles',    'car',       false),
+  ('vehicles.add_vehicle',   'Add Vehicle', 'plus',      true),
+  ('vehicles.search',        'Search',      'search',    false),
+  ('reports.reports',        'Reports',     'report',    false)
 ] %}
 
-{% for endpoint, label, name in links %}
-  <a href="{{ url_for(endpoint) }}"
-     class="nav-link {% if request.endpoint == endpoint %}nav-link-active{% endif %}"
-     {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>
-    {{ icon(name) }}
-    <span>{{ label }}</span>
-  </a>
+{% for endpoint, label, name, editor_only in links %}
+  {% if is_editor or not editor_only %}
+    <a href="{{ url_for(endpoint) }}"
+       class="nav-link {% if request.endpoint == endpoint %}nav-link-active{% endif %}"
+       {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>
+      {{ icon(name) }}
+      <span>{{ label }}</span>
+    </a>
+  {% endif %}
 {% endfor %}

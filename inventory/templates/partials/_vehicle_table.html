@@ -43,11 +43,17 @@
               <td class="hidden text-muted lg:table-cell">{{ vehicle.color or '—' }}</td>
               <td><span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span></td>
               <td class="no-print">
+                {# View is for everyone; the two that change data are added
+                   only for a signed-in user, so a guest sees no dead buttons. #}
                 <div class="flex flex-col items-stretch gap-1.5 sm:flex-row sm:justify-end sm:gap-2">
-                  <a class="btn btn-sm btn-primary"
-                     href="{{ url_for('vehicles.edit_vehicle', vehicle_id=vehicle.id) }}">Edit</a>
-                  <a class="btn btn-sm btn-ghost text-red-600 hover:bg-red-50"
-                     href="{{ url_for('vehicles.delete_vehicle', vehicle_id=vehicle.id) }}">Delete</a>
+                  <a class="btn btn-sm btn-ghost"
+                     href="{{ url_for('vehicles.view_vehicle', vehicle_id=vehicle.id) }}">View</a>
+                  {% if is_editor %}
+                    <a class="btn btn-sm btn-primary"
+                       href="{{ url_for('vehicles.edit_vehicle', vehicle_id=vehicle.id) }}">Edit</a>
+                    <a class="btn btn-sm btn-ghost text-red-600 hover:bg-red-50"
+                       href="{{ url_for('vehicles.delete_vehicle', vehicle_id=vehicle.id) }}">Delete</a>
+                  {% endif %}
                 </div>
               </td>
             </tr>

@@ -53,6 +53,14 @@ def auth_client(app):
 
 
 @pytest.fixture
+def guest_client(app):
+    """A test client browsing in read-only guest mode."""
+    client = app.test_client()
+    client.post("/guest")
+    return client
+
+
+@pytest.fixture
 def sample_vehicle(app):
     """Insert one vehicle and return its id."""
     with app.app_context():
