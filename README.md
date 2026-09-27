@@ -26,7 +26,9 @@ Flash messages confirm every action, and there are custom 404 and 500 pages.
 
 ## Data model
 
-**users** — `id`, `username` (unique), `password_hash`, `created_at`
+**users** — `id`, `username` (unique), `email` (unique, nullable), `password_hash`,
+`created_at`. `email` is nullable because accounts made with `create-admin` before
+sign-up existed do not have one; accounts created through `/signup` always do.
 
 **vehicles**
 
@@ -55,7 +57,7 @@ uv sync                          # install dependencies into .venv
 cp .env.example .env             # then edit SECRET_KEY
 
 uv run flask --app app init-db        # create the tables
-uv run flask --app app create-admin   # prompts for username and password
+uv run flask --app app create-admin   # prompts for username and password (--email optional)
 uv run flask --app app seed           # insert 15 sample vehicles
 
 uv run flask --app app run            # http://127.0.0.1:5000
@@ -175,8 +177,8 @@ inventory/
   __init__.py                app factory, config, blueprints, error pages
   db.py                      engine, sessions, get_database_url()
   models.py                  User and Vehicle
-  forms.py                   LoginForm, VehicleForm, DeleteForm
-  auth.py                    login, logout, @login_required
+  forms.py                   LoginForm, SignupForm, VehicleForm, DeleteForm
+  auth.py                    signup, login, logout, @login_required
   vehicles.py                dashboard, CRUD and search routes
   reports.py                 reports page and CSV export
   cli.py                     init-db, create-admin, seed

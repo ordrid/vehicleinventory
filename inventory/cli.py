@@ -54,18 +54,24 @@ def init_db_command():
 
 @click.command("create-admin")
 @click.option("--username", prompt=True, help="Username for the new account.")
+@click.option("--email", default=None, help="Email address for the new account (optional).")
 @click.password_option(help="Password for the new account.")
 @with_appcontext
-def create_admin_command(username: str, password: str):
+def create_admin_command(username: str, email: str | None, password: str):
     """Create a login account, storing the password as a werkzeug hash."""
     db = get_session()
     username = username.strip()
+    email = email.strip().lower() if email else None
 
     if db.scalars(select(User).where(User.username == username)).first():
         click.echo(f"User {username!r} already exists.")
         return
 
-    user = User(username=username)
+    if email and db.scalars(select(User).where(User.email == email)).first():
+        click.echo(f"Email {email!r} is already used by another account.")
+        return
+
+    user = User(username=username, email=email)
     user.set_password(password)
     db.add(user)
     db.commit()

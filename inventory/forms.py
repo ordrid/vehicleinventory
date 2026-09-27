@@ -14,11 +14,17 @@ from wtforms import (
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Length, NumberRange, Optional
+from wtforms.validators import DataRequired, EqualTo, Length, NumberRange, Optional, Regexp
 
 from .models import STATUSES, VEHICLE_TYPES
 
 MIN_YEAR = 1950
+
+# Deliberately loose: "something@something.tld". A stricter check would need the
+# email-validator package, and the only real proof an address works is sending
+# to it, which this app does not do yet.
+EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$"
+MIN_PASSWORD_LENGTH = 8
 
 
 def max_year() -> int:
@@ -31,6 +37,13 @@ def clean_plate(value: str | None) -> str | None:
     if value is None:
         return None
     return value.strip().upper()
+
+
+def clean_email(value: str | None) -> str | None:
+    """Trim and lower-case an address so 'Me@Example.COM ' and 'me@example.com' are one account."""
+    if value is None:
+        return None
+    return value.strip().lower()
 
 
 def clean_text(value: str | None) -> str | None:
@@ -47,6 +60,50 @@ class LoginForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired(), Length(max=80)])
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Log in")
+
+
+class SignupForm(FlaskForm):
+    """Create a new account: username, email address and a password typed twice."""
+
+    username = StringField(
+        "Username",
+        filters=[clean_text],
+        validators=[
+            DataRequired(message="Username is required."),
+            Length(min=3, max=80, message="Username must be between 3 and 80 characters."),
+            Regexp(
+                r"^[A-Za-z0-9._-]+$",
+                message="Username may only contain letters, numbers, dots, dashes and underscores.",
+            ),
+        ],
+    )
+    email = StringField(
+        "Email",
+        filters=[clean_email],
+        validators=[
+            DataRequired(message="Email is required."),
+            Length(max=255),
+            Regexp(EMAIL_PATTERN, message="Enter a valid email address."),
+        ],
+    )
+    password = PasswordField(
+        "Password",
+        validators=[
+            DataRequired(message="Password is required."),
+            Length(
+                min=MIN_PASSWORD_LENGTH,
+                message=f"Password must be at least {MIN_PASSWORD_LENGTH} characters.",
+            ),
+        ],
+    )
+    confirm_password = PasswordField(
+        "Confirm password",
+        validators=[
+            DataRequired(message="Please retype the password."),
+            EqualTo("password", message="The two passwords do not match."),
+        ],
+    )
+    submit = SubmitField("Create account")
 
 
 class VehicleForm(FlaskForm):

@@ -1,4 +1,4 @@
-"""Login, logout and the decorator that protects every other page."""
+"""Sign-up, login, logout and the decorator that protects every other page."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from sqlalchemy import select
 
 from .db import get_session
-from .forms import LoginForm
+from .forms import LoginForm, SignupForm
 from .models import User
 
 bp = Blueprint("auth", __name__)
@@ -38,6 +38,12 @@ def find_user_by_username(username: str) -> User | None:
     return db.scalars(select(User).where(User.username == username)).first()
 
 
+def find_user_by_email(email: str) -> User | None:
+    """Look up a single user by email address, or return None when there is no match."""
+    db = get_session()
+    return db.scalars(select(User).where(User.email == email)).first()
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     """Show the login form and sign the user in when the credentials are correct.
@@ -62,6 +68,44 @@ def login():
         flash("Invalid username or password.", "error")
 
     return render_template("login.html", form=form)
+
+
+@bp.route("/signup", methods=["GET", "POST"])
+def signup():
+    """Show the sign-up form and create the account when everything validates.
+
+    There is no email confirmation step: the address is only stored so an
+    account can be identified later. Username and email are both unique, and
+    each clash is reported on its own field so the visitor knows which to
+    change. A new account is signed in straight away.
+    """
+    if session.get("user_id"):
+        return redirect(url_for("vehicles.dashboard"))
+
+    form = SignupForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        email = form.email.data
+
+        if find_user_by_username(username) is not None:
+            form.username.errors.append("That username is already taken.")
+        if find_user_by_email(email) is not None:
+            form.email.errors.append("That email address already has an account.")
+
+        if not form.errors:
+            db = get_session()
+            user = User(username=username, email=email)
+            user.set_password(form.password.data)
+            db.add(user)
+            db.commit()
+
+            session.clear()
+            session["user_id"] = user.id
+            session["username"] = user.username
+            flash(f"Welcome, {user.username}! Your account is ready.", "success")
+            return redirect(url_for("vehicles.dashboard"))
+
+    return render_template("signup.html", form=form)
 
 
 @bp.route("/logout", methods=["POST"])
