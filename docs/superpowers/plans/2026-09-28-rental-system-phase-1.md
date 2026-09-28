@@ -826,7 +826,10 @@ The security backbone. After this task a customer cannot reach an admin page and
 - Modify: `rental/templates/base.html`, `login.html`, `partials/_nav_links.html`, `partials/_vehicle_table.html`, `403.html`
 - Modify: `tests/conftest.py`, `tests/test_auth.py`
 - Delete: `tests/test_guest.py`
-- Test: `tests/test_roles.py` (create)
+
+`tests/test_roles.py` is NOT created here. Its routes do not exist until Task 11,
+and committing a test file marked skip would leave the suite carrying disabled
+tests for five tasks. Task 11 writes it against routes that exist.
 
 **Interfaces:**
 - Consumes: Task 5's models
@@ -841,7 +844,33 @@ The security backbone. After this task a customer cannot reach an admin page and
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/test_roles.py`:
+The role matrix itself belongs to Task 11, which builds the routes it asserts on.
+What is testable here is the decorator behaviour and the retirement of guest
+mode, both of which apply to the routes that already exist. Add to
+`tests/test_auth.py`:
+
+```python
+def test_guest_mode_is_gone(client):
+    assert client.post("/guest").status_code == 404
+
+
+def test_an_admin_reaches_an_admin_guarded_page(admin_client):
+    assert admin_client.get("/vehicles").status_code == 200
+
+
+def test_a_customer_is_refused_an_admin_guarded_page(customer_client):
+    assert customer_client.get("/vehicles").status_code == 403
+
+
+def test_an_anonymous_visitor_is_redirected_with_a_next_parameter(client):
+    response = client.get("/vehicles")
+    assert response.status_code == 302
+    assert "/login" in response.headers["Location"]
+    assert "next=" in response.headers["Location"]
+```
+
+Task 11 will move these four into `tests/test_roles.py` alongside the full
+matrix, once the final URLs exist. For reference, that matrix is:
 
 ```python
 """Who may reach which page. One table, three kinds of session."""
@@ -849,8 +878,6 @@ Create `tests/test_roles.py`:
 from __future__ import annotations
 
 import pytest
-
-pytestmark = pytest.mark.skip(reason="routes land in Task 11")
 
 PUBLIC_PAGES = ["/", "/vehicles"]
 ADMIN_PAGES = ["/admin", "/admin/vehicles", "/admin/vehicles/add", "/admin/rates"]
@@ -890,10 +917,6 @@ def test_a_customer_reaches_their_own_portal(customer_client, path):
     assert customer_client.get(path).status_code == 200
 
 
-def test_guest_mode_is_gone(client):
-    assert client.post("/guest").status_code == 404
-
-
 @pytest.mark.parametrize("path", ADMIN_PAGES + CUSTOMER_PAGES)
 def test_no_admin_or_portal_page_answers_with_a_trailing_slash_redirect(admin_client, path):
     """A blueprint prefix plus @bp.route("/") registers "/admin/", not "/admin".
@@ -904,7 +927,9 @@ def test_no_admin_or_portal_page_answers_with_a_trailing_slash_redirect(admin_cl
     assert admin_client.get(path).status_code != 308
 ```
 
-The `pytestmark` skip is deliberate: this file's routes arrive in Task 11, and Task 11's first step removes the line. Everything else in this task is testable now.
+Do not create that file in this task — it is reproduced above only so Task 11
+has the exact matrix to write. Creating it now would mean committing a test file
+that cannot pass.
 
 - [ ] **Step 2: Rewrite `tests/conftest.py`**
 
@@ -1250,7 +1275,7 @@ def test_a_disabled_account_cannot_sign_in(app, client):
 - [ ] **Step 9: Run the suite**
 
 Run: `uv run pytest -q`
-Expected: all tests pass, with `tests/test_roles.py` reported as skipped.
+Expected: all tests pass, none skipped.
 
 - [ ] **Step 10: Rebuild the stylesheet and commit**
 
@@ -1353,7 +1378,12 @@ def test_a_wrong_current_password_is_refused(customer_client):
     assert b"current password is not correct" in response.data
 ```
 
-The two tests that request `/my` depend on Task 11's portal route. Mark just those two with `@pytest.mark.skip(reason="portal lands in Task 11")` and remove the markers in Task 11 Step 7.
+Two of these request `/my`, which Task 11 creates. Write them against
+`/vehicles` instead — an admin-guarded route that exists now — using
+`admin_client` in place of `customer_client`, and assert the same two things: a
+temporary password redirects to `/change-password`, and clearing it restores
+access. The behaviour under test is the `before_request` gate, which is
+route-independent, so nothing is lost and nothing is committed disabled.
 
 - [ ] **Step 2: Run them and watch them fail**
 
@@ -1490,7 +1520,7 @@ On `change_password.html`, when `forced` is true, render an `.alert.alert-warnin
 - [ ] **Step 7: Run the tests**
 
 Run: `uv run pytest tests/test_auth.py -q`
-Expected: PASS, with the two `/my` tests skipped.
+Expected: PASS, none skipped.
 
 - [ ] **Step 8: Run the whole suite, rebuild the stylesheet and commit**
 
@@ -2011,7 +2041,18 @@ In `rental/static/src/input.css`, inside `@layer components`:
 
 Every template under `admin/` changes its first line to `{% extends 'layout_admin.html' %}`. `auth/login.html` and `auth/signup.html` keep their own full-bleed `body` block and extend `base.html` directly; `auth/forgot_password.html` and `auth/change_password.html` extend `layout_public.html`. `403.html`, `404.html` and `500.html` extend `layout_public.html`, because an error can reach an anonymous visitor.
 
-`layout_public.html` references `public.landing`, `public.browse` and `portal.dashboard`, which do not exist until Task 11. So **Task 9's suite will fail with `BuildError` on any page using the public layout.** That is expected and is resolved in Task 11 Step 5. To keep this task verifiable on its own, temporarily leave `403/404/500.html` and the two auth pages extending `base.html`, and switch them in Task 11 Step 6.
+`layout_public.html` references `public.landing`, `public.browse` and
+`portal.dashboard`, which do not exist until Task 11. So **Task 9's suite will
+fail with `BuildError` on any page using the public layout.** To keep this task
+verifiable on its own, leave `403/404/500.html` and the two auth pages extending
+`base.html`; Task 11 Step 6 switches them over.
+
+**This is intentional and is not dead code.** `layout_public.html` and
+`partials/_public_nav.html` are created in this task because Task 11 registers
+five blueprints whose templates all extend them, and writing the layouts in the
+same task as the routes would make that task far too large to review. They are
+unreferenced for two tasks by design. Note this in the commit message so the
+reason survives in the history.
 
 - [ ] **Step 8: Run the suite**
 
@@ -2420,9 +2461,16 @@ Change the CSRF error handler's redirect target to `url_for("public.landing")` �
 
 Now that `public.landing` and `public.browse` exist, switch `403.html`, `404.html`, `500.html`, `auth/forgot_password.html` and `auth/change_password.html` to `{% extends 'layout_public.html' %}`.
 
-- [ ] **Step 7: Un-skip the deferred tests**
+- [ ] **Step 7: Create `tests/test_roles.py`**
 
-Remove `pytestmark = pytest.mark.skip(reason="routes land in Task 11")` from `tests/test_roles.py`, and the two `@pytest.mark.skip(reason="portal lands in Task 11")` markers from `tests/test_auth.py`.
+Task 6 deferred the role matrix to this task, because it asserts on routes that
+only exist now. Create `tests/test_roles.py` with the matrix given in Task 6
+Step 1, and move the four decorator tests Task 6 put in `tests/test_auth.py`
+(`test_guest_mode_is_gone` and the three `/vehicles` guard tests) into it,
+retargeting the three at `/admin/vehicles`.
+
+Retarget Task 7's two forced-password-change tests at `/my` with
+`customer_client`, which is what they were always meant to exercise.
 
 Run: `uv run pytest tests/test_roles.py tests/test_auth.py -q`
 Expected: PASS — every parametrised case.
@@ -2455,11 +2503,14 @@ git commit -m "feat: split the routes into public, portal and admin blueprints"
 
 **Files:**
 - Modify: `rental/public.py`, `rental/templates/public/landing.html`
+- Create: `rental/templates/partials/_vehicle_card.html`
 - Test: `tests/test_public.py` (create)
 
 **Interfaces:**
 - Consumes: Task 11's `public.landing`, Task 10's `vehicle_image` macro
-- Produces: `landing()` passes `featured: list[Vehicle]` (up to three) and `available_count: int`
+- Produces: `landing()` passes `featured: list[Vehicle]` (up to three) and
+  `available_count: int`; the macro `vehicle_card(vehicle)` in
+  `partials/_vehicle_card.html`, which Task 13's browse grid also uses
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2535,10 +2586,53 @@ Add `func`, `select` to the imports in `public.py`.
    - *Vehicle Availability* — "Check whether a vehicle is available for your selected dates." (`check`)
    - *Automatic Calculation* — "The system automatically calculates your rental cost." (`money`)
    - *Fleet Management* — "Administrators can manage vehicles, reservations, rentals, and maintenance." (`wrench`)
-3. **Featured vehicles** — heading "Starting from our best rates", then `grid gap-5 sm:grid-cols-2 lg:grid-cols-3` of `{{ vehicle_card(vehicle) }}`. Task 13 creates `partials/_vehicle_card.html`; until then inline the card markup here and replace it with the macro in Task 13 Step 4.
+3. **Featured vehicles** — heading "Starting from our best rates", then `grid gap-5 sm:grid-cols-2 lg:grid-cols-3` of `{{ vehicle_card(vehicle) }}`, importing the macro written in Step 4b below.
 4. **Closing strip** — the tagline "Online reservation + vehicle availability + automatic rental calculation" and a `Browse Vehicles` button.
 
 Set `{% block title %}Vehicle Rental and Reservation System{% endblock %}`.
+
+- [ ] **Step 4b: Write the vehicle card partial**
+
+`rental/templates/partials/_vehicle_card.html`, matching the layout requirement 5
+sketches. It is written here rather than in Task 13 so the markup exists in
+exactly one place from the moment it is first needed:
+
+```html
+{% from 'partials/_vehicle_image.html' import vehicle_image %}
+
+{% macro vehicle_card(vehicle) %}
+<article class="vehicle-card">
+  <div class="vehicle-card-media">{{ vehicle_image(vehicle) }}</div>
+  <div class="flex flex-1 flex-col gap-3 p-5">
+    <div>
+      <h3 class="text-base font-bold tracking-tight text-ink">{{ vehicle.brand }} {{ vehicle.model }}</h3>
+      <p class="text-sm text-muted">{{ vehicle.vehicle_type }} &middot; {{ vehicle.year }}</p>
+    </div>
+
+    <div class="flex flex-wrap gap-1.5">
+      <span class="spec-chip">{{ vehicle.seats }} Seats</span>
+      <span class="spec-chip">{{ vehicle.transmission }}</span>
+      <span class="spec-chip">{{ vehicle.fuel_type }}</span>
+    </div>
+
+    <div class="mt-auto flex items-end justify-between gap-3 pt-2">
+      <p>
+        <span class="rate">₱{{ '{:,.0f}'.format(vehicle.daily_rate) }}</span>
+        <span class="text-sm text-muted">/ day</span>
+      </p>
+      <span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span>
+    </div>
+
+    <a class="btn btn-primary w-full" href="{{ url_for('public.vehicle_detail', vehicle_id=vehicle.id) }}">
+      View Details
+    </a>
+  </div>
+</article>
+{% endmacro %}
+```
+
+There is no **Reserve Now** button. It appears in phase 3 with the booking flow
+behind it; rendering it now would be a dead control.
 
 - [ ] **Step 5: Run the tests**
 
@@ -2559,13 +2653,13 @@ git commit -m "feat: add the public landing page"
 ### Task 13: The public browse grid with filters and pagination
 
 **Files:**
-- Modify: `rental/public.py`, `rental/templates/public/browse.html`, `rental/templates/public/landing.html`
-- Create: `rental/templates/partials/_vehicle_card.html`
+- Modify: `rental/public.py`, `rental/templates/public/browse.html`
 - Test: `tests/test_public.py`
 
 **Interfaces:**
-- Consumes: Task 11's `paginate(query, page, per_page)` and `GRID_PER_PAGE`
-- Produces: `browse()` reading `type`, `transmission`, `seats`, `min_rate`, `max_rate`, `page` from the query string; the macro `vehicle_card(vehicle)` in `partials/_vehicle_card.html`
+- Consumes: Task 11's `paginate(query, page, per_page)` and `GRID_PER_PAGE`;
+  Task 12's `vehicle_card(vehicle)` macro in `partials/_vehicle_card.html`
+- Produces: `browse()` reading `type`, `transmission`, `seats`, `min_rate`, `max_rate`, `page` from the query string
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2667,48 +2761,6 @@ def browse():
 ```
 
 Add to `public.py`'s imports: `from decimal import Decimal`, `request` from flask, `TRANSMISSIONS` and `VEHICLE_TYPES` from `.models`, and `from .admin.fleet import GRID_PER_PAGE, paginate`.
-
-- [ ] **Step 4: Write the vehicle card partial**
-
-`rental/templates/partials/_vehicle_card.html`, matching the layout requirement 5 sketches:
-
-```html
-{% from 'partials/_vehicle_image.html' import vehicle_image %}
-
-{% macro vehicle_card(vehicle) %}
-<article class="vehicle-card">
-  <div class="vehicle-card-media">{{ vehicle_image(vehicle) }}</div>
-  <div class="flex flex-1 flex-col gap-3 p-5">
-    <div>
-      <h3 class="text-base font-bold tracking-tight text-ink">{{ vehicle.brand }} {{ vehicle.model }}</h3>
-      <p class="text-sm text-muted">{{ vehicle.vehicle_type }} &middot; {{ vehicle.year }}</p>
-    </div>
-
-    <div class="flex flex-wrap gap-1.5">
-      <span class="spec-chip">{{ vehicle.seats }} Seats</span>
-      <span class="spec-chip">{{ vehicle.transmission }}</span>
-      <span class="spec-chip">{{ vehicle.fuel_type }}</span>
-    </div>
-
-    <div class="mt-auto flex items-end justify-between gap-3 pt-2">
-      <p>
-        <span class="rate">₱{{ '{:,.0f}'.format(vehicle.daily_rate) }}</span>
-        <span class="text-sm text-muted">/ day</span>
-      </p>
-      <span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span>
-    </div>
-
-    <a class="btn btn-primary w-full" href="{{ url_for('public.vehicle_detail', vehicle_id=vehicle.id) }}">
-      View Details
-    </a>
-  </div>
-</article>
-{% endmacro %}
-```
-
-There is no **Reserve Now** button yet. It appears in phase 3 with the booking flow behind it; rendering it now would be a dead control.
-
-Go back to `public/landing.html` and replace its inlined featured-vehicle markup with `{% from 'partials/_vehicle_card.html' import vehicle_card %}` and `{{ vehicle_card(vehicle) }}`.
 
 - [ ] **Step 5: Write the browse template**
 
