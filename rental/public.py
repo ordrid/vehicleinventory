@@ -8,8 +8,9 @@ from flask import Blueprint, abort, render_template, request
 from sqlalchemy import func, select
 
 from .admin.fleet import GRID_PER_PAGE, paginate
+from .auth import current_role
 from .db import get_session
-from .models import TRANSMISSIONS, VEHICLE_TYPES, Vehicle
+from .models import TRANSMISSIONS, VEHICLE_TYPES, RentalRates, Vehicle
 
 bp = Blueprint("public", __name__)
 
@@ -91,8 +92,19 @@ def browse():
 
 @bp.route("/vehicles/<int:vehicle_id>")
 def vehicle_detail(vehicle_id: int):
-    """One vehicle as a customer sees it. Task 14 gives it its real content."""
-    vehicle = get_session().get(Vehicle, vehicle_id)
+    """One vehicle's public page.
+
+    A disabled vehicle is 404 for a visitor -- it is not part of the fleet on
+    offer -- but stays reachable for an admin, who follows this link from the
+    console to see what a customer would see.
+    """
+    db = get_session()
+    vehicle = db.get(Vehicle, vehicle_id)
     if vehicle is None:
         abort(404)
-    return render_template("public/vehicle_detail.html", vehicle=vehicle)
+    if not vehicle.is_active and current_role() != "admin":
+        abort(404)
+
+    return render_template(
+        "public/vehicle_detail.html", vehicle=vehicle, rates=RentalRates.current(db)
+    )

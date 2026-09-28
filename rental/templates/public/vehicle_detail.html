@@ -1,8 +1,102 @@
 {% extends 'layout_public.html' %}
-{% block title %}{{ vehicle.brand }} {{ vehicle.model }} &middot; Vehicle Rental{% endblock %}
+{% from 'partials/_vehicle_image.html' import vehicle_image %}
+{% block title %}{{ vehicle.display_name }} &middot; Vehicle Rental{% endblock %}
 
-{# Placeholder. Task 14 builds the real vehicle detail page. #}
 {% block content %}
-<h1 class="page-title">{{ vehicle.brand }} {{ vehicle.model }}</h1>
-<p class="mt-1 text-sm text-muted">{{ vehicle.plate_number }}</p>
+<div class="grid gap-8 lg:grid-cols-[3fr_2fr]">
+  <div class="flex flex-col gap-6">
+    <div class="card overflow-hidden">
+      <div class="flex aspect-[16/10] w-full items-center justify-center bg-slate-100">
+        {{ vehicle_image(vehicle) }}
+      </div>
+    </div>
+
+    <div>
+      <h1 class="page-title">{{ vehicle.display_name }}</h1>
+      <div class="mt-2 flex items-center gap-2.5">
+        <p class="text-sm text-muted">{{ vehicle.vehicle_type }}</p>
+        <span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div>
+          <p class="stat-label">Category</p>
+          <p class="stat-value">{{ vehicle.vehicle_type }}</p>
+        </div>
+        <div>
+          <p class="stat-label">Year</p>
+          <p class="stat-value">{{ vehicle.year }}</p>
+        </div>
+        <div>
+          <p class="stat-label">Seats</p>
+          <p class="stat-value">{{ vehicle.seats }}</p>
+        </div>
+        <div>
+          <p class="stat-label">Transmission</p>
+          <p class="stat-value">{{ vehicle.transmission }}</p>
+        </div>
+        <div>
+          <p class="stat-label">Fuel type</p>
+          <p class="stat-value">{{ vehicle.fuel_type }}</p>
+        </div>
+        <div>
+          <p class="stat-label">Plate number</p>
+          <p class="stat-value">{{ vehicle.plate_number }}</p>
+        </div>
+      </div>
+    </div>
+
+    {% if vehicle.description %}
+      <div class="card p-5">
+        <p class="stat-label">About this vehicle</p>
+        <p class="mt-2 text-sm leading-relaxed text-ink">{{ vehicle.description }}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="lg:sticky lg:top-24 lg:self-start">
+    <div class="card p-5">
+      <p>
+        <span class="rate">₱{{ '{:,.2f}'.format(vehicle.daily_rate) }}</span>
+        <span class="text-muted">/ day</span>
+      </p>
+      {% if vehicle.hourly_rate %}
+        <p class="mt-1 text-sm text-muted">
+          ₱{{ '{:,.2f}'.format(vehicle.hourly_rate) }} / hour
+        </p>
+      {% endif %}
+
+      <div class="mt-5 border-t border-line pt-4">
+        <p class="stat-label">Optional extras</p>
+        <ul class="mt-2 space-y-1.5 text-sm text-ink">
+          <li class="flex items-center justify-between">
+            <span>Additional driver</span>
+            <span>₱{{ '{:,.2f}'.format(rates.additional_driver_fee_per_day) }} / day</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Insurance</span>
+            <span>₱{{ '{:,.2f}'.format(rates.insurance_fee_per_day) }} / day</span>
+          </li>
+        </ul>
+      </div>
+
+      {% if vehicle.status == 'MAINTENANCE' %}
+        <div class="alert alert-warning mt-4">
+          <span>Currently unavailable. This vehicle is under maintenance.</span>
+        </div>
+      {% endif %}
+
+      {% if is_customer %}
+        <p class="mt-4 text-sm text-muted">Online booking opens soon. Call the office to reserve this vehicle.</p>
+        <a class="btn btn-ghost mt-3 w-full" href="{{ url_for('public.browse') }}">Browse more vehicles</a>
+      {% else %}
+        <p class="mt-4 text-sm text-muted">Create an account to reserve a vehicle online.</p>
+        <a class="btn btn-primary mt-3 w-full" href="{{ url_for('auth.signup') }}">Create account</a>
+        <a class="btn btn-ghost mt-2 w-full" href="{{ url_for('auth.login') }}">Log in</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
 {% endblock %}

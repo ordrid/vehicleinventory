@@ -59,3 +59,70 @@ def test_browse_has_an_empty_state_that_offers_a_way_out(client):
     response = client.get("/vehicles?type=Motorcycle")
     assert b"No vehicles match" in response.data
     assert b"Show all vehicles" in response.data
+
+
+def test_vehicle_detail_shows_the_rental_facts(client, sample_vehicle):
+    response = client.get(f"/vehicles/{sample_vehicle}")
+    assert response.status_code == 200
+    assert b"Toyota Hilux 2021" in response.data
+    assert "₱2,200.00".encode() in response.data
+    assert b"Automatic" in response.data
+    assert b"Diesel" in response.data
+
+
+def test_a_vehicle_without_a_photo_falls_back_to_its_type_silhouette(client, sample_vehicle):
+    response = client.get(f"/vehicles/{sample_vehicle}")
+    assert b"img/types/pickup.svg" in response.data
+
+
+def test_a_vehicle_with_a_photo_uses_it(app, client, sample_vehicle):
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    with app.app_context():
+        db = get_session()
+        db.get(Vehicle, sample_vehicle).image_url = "https://example.com/hilux.jpg"
+        db.commit()
+
+    assert b"https://example.com/hilux.jpg" in client.get(f"/vehicles/{sample_vehicle}").data
+
+
+def test_vehicle_detail_quotes_the_fees_from_the_rates_table(app, client, sample_vehicle):
+    from decimal import Decimal
+
+    from rental.db import get_session
+    from rental.models import RentalRates
+
+    with app.app_context():
+        db = get_session()
+        RentalRates.current(db).insurance_fee_per_day = Decimal("450.00")
+        db.commit()
+
+    assert "₱450.00".encode() in client.get(f"/vehicles/{sample_vehicle}").data
+
+
+def test_a_vehicle_under_maintenance_says_so(app, client, sample_vehicle):
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    with app.app_context():
+        db = get_session()
+        db.get(Vehicle, sample_vehicle).status = "MAINTENANCE"
+        db.commit()
+
+    assert b"under maintenance" in client.get(f"/vehicles/{sample_vehicle}").data
+
+
+def test_a_disabled_vehicle_is_hidden_from_visitors_but_not_from_an_admin(
+    app, client, admin_client, sample_vehicle
+):
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    with app.app_context():
+        db = get_session()
+        db.get(Vehicle, sample_vehicle).is_active = False
+        db.commit()
+
+    assert client.get(f"/vehicles/{sample_vehicle}").status_code == 404
+    assert admin_client.get(f"/vehicles/{sample_vehicle}").status_code == 200
