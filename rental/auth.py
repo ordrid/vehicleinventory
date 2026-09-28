@@ -18,8 +18,8 @@ from flask import (
 from sqlalchemy import select
 
 from .db import get_session
-from .forms import LoginForm, SignupForm
-from .models import User
+from .forms import ChangePasswordForm, ForgotPasswordForm, LoginForm, SignupForm
+from .models import User, utcnow
 
 bp = Blueprint("auth", __name__)
 
@@ -187,3 +187,49 @@ def logout():
     session.clear()
     flash("You have been logged out.", "success")
     return redirect(url_for("auth.login"))
+
+
+@bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    """Record that someone wants their password reset.
+
+    No email is sent and no token is minted: an admin sees the flag on the
+    Customers page and issues a temporary password. The confirmation is worded
+    identically whether or not the address exists, so the form cannot be used to
+    discover which addresses have accounts.
+    """
+    form = ForgotPasswordForm()
+    if form.validate_on_submit():
+        user = find_user_by_email(form.email.data)
+        if user is not None:
+            user.reset_requested_at = utcnow()
+            get_session().commit()
+        flash(
+            "If that address has an account, you have asked the office to reset it. "
+            "Staff will issue you a temporary password.",
+            "info",
+        )
+        return redirect(url_for("auth.login"))
+
+    return render_template("forgot_password.html", form=form)
+
+
+@bp.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    """Change your own password. Forced when an admin has issued a temporary one."""
+    user = current_user()
+    form = ChangePasswordForm()
+
+    if form.validate_on_submit():
+        if not user.check_password(form.current_password.data):
+            form.current_password.errors.append("That current password is not correct.")
+        else:
+            user.set_password(form.password.data)
+            user.must_change_password = False
+            user.reset_requested_at = None
+            get_session().commit()
+            flash("Your password has been changed.", "success")
+            return redirect(home_for(user))
+
+    return render_template("change_password.html", form=form, forced=user.must_change_password)

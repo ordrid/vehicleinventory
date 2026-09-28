@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, url_for
+from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
 from . import auth, cli, db, reports, vehicles
@@ -46,8 +46,25 @@ def create_app(config: dict | None = None) -> Flask:
     cli.register_cli(app)
     register_template_globals(app)
     register_error_handlers(app)
+    register_password_change_gate(app)
 
     return app
+
+
+def register_password_change_gate(app: Flask) -> None:
+    """Hold anyone carrying a temporary password on the change-password page."""
+
+    @app.before_request
+    def force_password_change():
+        user = auth.current_user()
+        if user is None or not user.must_change_password:
+            return None
+        # Without the `static` exemption the change-password page would render
+        # with no stylesheet, because the request for output.css would itself
+        # be redirected.
+        if request.endpoint in ("auth.change_password", "auth.logout", "static"):
+            return None
+        return redirect(url_for("auth.change_password"))
 
 
 def register_template_globals(app: Flask) -> None:

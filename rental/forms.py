@@ -193,3 +193,43 @@ class DeleteForm(FlaskForm):
     """Empty form used only to carry a CSRF token on the delete confirmation page."""
 
     submit = SubmitField("Yes, delete it")
+
+
+class ForgotPasswordForm(FlaskForm):
+    """Ask the office to reset a password. No email is sent; an admin services it."""
+
+    email = StringField(
+        "Email",
+        filters=[clean_email],
+        validators=[
+            DataRequired(message="Email is required."),
+            Regexp(EMAIL_PATTERN, message="Enter a valid email address."),
+        ],
+    )
+    submit = SubmitField("Request a reset")
+
+
+class ChangePasswordForm(FlaskForm):
+    """Change your own password, proving you know the current one."""
+
+    current_password = PasswordField(
+        "Current password", validators=[DataRequired(message="Enter your current password.")]
+    )
+    password = PasswordField(
+        "New password",
+        validators=[
+            DataRequired(message="A new password is required."),
+            Length(
+                min=MIN_PASSWORD_LENGTH,
+                message=f"Password must be at least {MIN_PASSWORD_LENGTH} characters.",
+            ),
+        ],
+    )
+    confirm_password = PasswordField(
+        "Confirm new password",
+        validators=[
+            DataRequired(message="Please retype the new password."),
+            EqualTo("password", message="The two passwords do not match."),
+        ],
+    )
+    submit = SubmitField("Change password")
