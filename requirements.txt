@@ -7,9 +7,9 @@ click==8.5.0
 flask==3.1.3
     # via
     #   flask-wtf
-    #   vehicle-inventory
+    #   vehicle-rental
 flask-wtf==1.3.0
-    # via vehicle-inventory
+    # via vehicle-rental
 greenlet==3.5.6 ; platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'
     # via sqlalchemy
 itsdangerous==2.2.0
@@ -25,13 +25,13 @@ markupsafe==3.0.3
     #   werkzeug
     #   wtforms
 psycopg==3.3.6
-    # via vehicle-inventory
+    # via vehicle-rental
 psycopg-binary==3.3.6 ; implementation_name != 'pypy'
     # via psycopg
 python-dotenv==1.2.3
-    # via vehicle-inventory
+    # via vehicle-rental
 sqlalchemy==2.0.54
-    # via vehicle-inventory
+    # via vehicle-rental
 typing-extensions==4.16.0
     # via
     #   psycopg

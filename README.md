@@ -121,15 +121,21 @@ install.
 
 ```bash
 uv sync
-uv run flask reset-db --yes --password 'choose-one' --demo-password 'choose-one'
+DATABASE_URL=sqlite:///rental.db uv run flask reset-db --password 'choose-one' --demo-password 'choose-one'
 uv run flask run
 ```
 
-`flask reset-db` drops every table (if any exist), recreates them, and seeds
-a demo fleet of 10 vehicles, an admin account and three sample customers. It
-refuses to touch anything other than a local SQLite database unless `--yes`
-is passed, so it cannot accidentally wipe a production database from a
-mistyped `DATABASE_URL`.
+`flask reset-db` drops every table, recreates them, and seeds a demo fleet of
+ten vehicles, an admin account and three sample customers. It refuses to run
+against anything other than local SQLite unless you pass `--yes`, so pointing
+it at a remote database takes a deliberate extra step.
+
+Pin `DATABASE_URL` on the command as shown rather than relying on whatever is
+in your environment. `python-dotenv` searches upward for a `.env`, so a stray
+or inherited one can silently point this command at a real database — and
+`--yes` is exactly what would let it through. If the command complains it
+cannot find a database, set `DATABASE_URL`; never add `--yes` to make the
+error go away.
 
 ## Local setup
 
