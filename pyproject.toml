@@ -1,7 +1,7 @@
 [project]
-name = "vehicle-inventory"
+name = "vehicle-rental"
 version = "0.1.0"
-description = "A simple Flask + SQLAlchemy vehicle inventory management system."
+description = "A Flask + SQLAlchemy vehicle rental and reservation system."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
