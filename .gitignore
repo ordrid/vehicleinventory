@@ -15,3 +15,6 @@ wheels/
 
 # Tooling
 .pytest_cache/
+
+# Worktrees created for isolated feature work.
+.claude/worktrees/
