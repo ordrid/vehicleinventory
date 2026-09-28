@@ -3736,9 +3736,19 @@ Expected: every test passes, none skipped. Record the count.
 
 - [ ] **Step 7: Verify the app actually runs against a real database**
 
+> **Pin `DATABASE_URL` on every command below.** `reset-db` drops every table,
+> and `--yes` exists to bypass its non-SQLite guard. `load_dotenv()` searches
+> upward from the package, so in a git worktree — which has no `.env` of its own
+> — it finds the parent checkout's, which may carry a live production URL. A bare
+> `flask reset-db --yes` there targets that remote database, not SQLite. Setting
+> `DATABASE_URL` explicitly makes the target unambiguous and makes `--yes`
+> unnecessary, so it is dropped. If any command here fails for want of a
+> database, set `DATABASE_URL` — never add `--yes` to make the error go away.
+
 ```bash
-rm -f rental.db
-uv run flask reset-db --yes --password 'demo-admin-pw' --demo-password 'demo-cust-pw'
+rm -f /tmp/phase1-verify.db
+export DATABASE_URL=sqlite:////tmp/phase1-verify.db
+uv run flask reset-db --password 'demo-admin-pw' --demo-password 'demo-cust-pw'
 uv run flask run --port 5001 &
 sleep 3
 for path in / /vehicles /vehicles/1 /login /signup /forgot-password; do
@@ -3747,6 +3757,8 @@ for path in / /vehicles /vehicles/1 /login /signup /forgot-password; do
 done
 curl -s -o /dev/null -w '/admin (anonymous) -> %{http_code}\n' "http://127.0.0.1:5001/admin"
 kill %1
+rm -f /tmp/phase1-verify.db
+unset DATABASE_URL
 ```
 
 Expected: `200` for the six public paths, `302` for `/admin`.
