@@ -6,9 +6,9 @@ from datetime import date
 
 import pytest
 
-from inventory import create_app
-from inventory.db import get_engine, get_session
-from inventory.models import Base, User, Vehicle
+from rental import create_app
+from rental.db import get_engine, get_session
+from rental.models import Base, User, Vehicle
 
 TEST_CONFIG = {
     # "sqlite://" is an in-memory database. db.create_db_engine gives it a

@@ -8,6 +8,6 @@ tests/
 .pytest_cache/
 __pycache__/
 
-# CSS build sources. Only the built inventory/static/css/output.css is served,
+# CSS build sources. Only the built rental/static/css/output.css is served,
 # and it is committed, so Vercel needs no build step.
-inventory/static/src/
+rental/static/src/

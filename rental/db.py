@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
 
 # Used when no DATABASE_URL is provided (local development / demos).
-DEFAULT_SQLITE_URL = "sqlite:///inventory.db"
+DEFAULT_SQLITE_URL = "sqlite:///rental.db"
 
 
 def get_database_url() -> str:

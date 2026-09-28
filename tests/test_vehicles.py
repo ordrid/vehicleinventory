@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from inventory.db import get_session
-from inventory.models import Vehicle
+from rental.db import get_session
+from rental.models import Vehicle
 
 NEW_VEHICLE = {
     "plate_number": "  new 9999 ",
