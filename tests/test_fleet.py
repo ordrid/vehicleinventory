@@ -252,7 +252,15 @@ def test_saving_new_rates_persists_them(app, admin_client):
         assert rates.insurance_fee_per_day == Decimal("0.00")
 
 
-def test_a_negative_fee_is_refused(admin_client):
+def test_a_negative_fee_is_refused(app, admin_client):
+    from decimal import Decimal
+
+    from rental.db import get_session
+    from rental.models import RentalRates
+
+    with app.app_context():
+        before = RentalRates.current(get_session()).additional_driver_fee_per_day
+
     response = admin_client.post(
         "/admin/rates",
         data={
@@ -261,10 +269,21 @@ def test_a_negative_fee_is_refused(admin_client):
             "late_fee_per_day": "800.00",
         },
     )
+    assert response.status_code == 200
     assert b"cannot be negative" in response.data
 
+    # The message is not the point -- the point is that nothing was written.
+    with app.app_context():
+        assert RentalRates.current(get_session()).additional_driver_fee_per_day == before
 
-def test_a_customer_cannot_change_the_rates(customer_client):
+
+def test_a_customer_cannot_change_the_rates(app, customer_client):
+    from rental.db import get_session
+    from rental.models import RentalRates
+
+    with app.app_context():
+        before = RentalRates.current(get_session()).late_fee_per_day
+
     assert customer_client.post(
         "/admin/rates",
         data={
@@ -273,6 +292,9 @@ def test_a_customer_cannot_change_the_rates(customer_client):
             "late_fee_per_day": "1.00",
         },
     ).status_code == 403
+
+    with app.app_context():
+        assert RentalRates.current(get_session()).late_fee_per_day == before
 
 
 def test_toggle_active_disables_and_re_enables_a_vehicle(app, admin_client, sample_vehicle):
