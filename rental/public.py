@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, render_template
+from decimal import Decimal
+
+from flask import Blueprint, abort, render_template, request
 from sqlalchemy import func, select
 
+from .admin.fleet import GRID_PER_PAGE, paginate
 from .db import get_session
-from .models import Vehicle
+from .models import TRANSMISSIONS, VEHICLE_TYPES, Vehicle
 
 bp = Blueprint("public", __name__)
 
@@ -43,8 +46,47 @@ def landing():
 
 @bp.route("/vehicles")
 def browse():
-    """The storefront grid. Task 13 gives it its real query and filters."""
-    return render_template("public/browse.html", vehicles=[], total=0)
+    """The storefront grid: every active vehicle, narrowed by the filter form.
+
+    Filters are plain GET parameters so a filtered grid can be bookmarked and
+    shared. Date-based availability filtering arrives with the booking engine in
+    phase 3; these filters are the ones that depend only on the vehicle itself.
+    """
+    vehicle_type = request.args.get("type", "")
+    transmission = request.args.get("transmission", "")
+    seats = request.args.get("seats", type=int)
+    min_rate = request.args.get("min_rate", type=float)
+    max_rate = request.args.get("max_rate", type=float)
+    page = request.args.get("page", 1, type=int)
+
+    query = select(Vehicle).where(Vehicle.is_active.is_(True))
+    if vehicle_type in VEHICLE_TYPES:
+        query = query.where(Vehicle.vehicle_type == vehicle_type)
+    if transmission in TRANSMISSIONS:
+        query = query.where(Vehicle.transmission == transmission)
+    if seats:
+        query = query.where(Vehicle.seats >= seats)
+    if min_rate is not None:
+        query = query.where(Vehicle.daily_rate >= Decimal(str(min_rate)))
+    if max_rate is not None:
+        query = query.where(Vehicle.daily_rate <= Decimal(str(max_rate)))
+
+    query = query.order_by(Vehicle.daily_rate.asc(), Vehicle.brand.asc())
+    vehicles, page, total_pages, total = paginate(query, page, GRID_PER_PAGE)
+
+    return render_template(
+        "public/browse.html",
+        vehicles=vehicles,
+        total=total,
+        page=page,
+        total_pages=total_pages,
+        vehicle_type=vehicle_type,
+        transmission=transmission,
+        seats=seats,
+        min_rate=min_rate,
+        max_rate=max_rate,
+        filtered=bool(vehicle_type or transmission or seats or min_rate or max_rate),
+    )
 
 
 @bp.route("/vehicles/<int:vehicle_id>")
