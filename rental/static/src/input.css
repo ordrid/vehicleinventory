@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @source "../../templates";
 
 /* The status pill colours are chosen in Python (models.STATUS_BADGES), so they
