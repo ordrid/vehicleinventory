@@ -6,20 +6,32 @@
 
 {% block main %}
 <section class="bg-navy-800 text-white">
-  <div class="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-    <h1 class="max-w-2xl text-4xl font-extrabold tracking-tight sm:text-5xl">
-      Rent the Right Vehicle for Your Journey
-    </h1>
-    <p class="mt-4 max-w-xl text-lg text-white/80">
-      Browse available vehicles, check availability, and reserve online.
-    </p>
-    <div class="mt-8 flex flex-wrap gap-3">
-      <a class="btn btn-primary" href="{{ url_for('public.browse') }}">Browse Vehicles</a>
-      <a class="btn btn-ghost" href="{{ url_for('public.browse') }}">Make a Reservation</a>
+  <div class="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-2 lg:px-8">
+    <div>
+      <h1 class="max-w-2xl text-4xl font-extrabold tracking-tight sm:text-5xl">
+        Rent the Right Vehicle for Your Journey
+      </h1>
+      <p class="mt-4 max-w-xl text-lg text-white/80">
+        Browse available vehicles, check availability, and reserve online.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a class="btn btn-primary" href="{{ url_for('public.browse') }}">Browse Vehicles</a>
+        <a class="btn btn-ghost" href="{{ url_for('public.browse') }}">Make a Reservation</a>
+      </div>
+      <p class="mt-6 text-sm text-white/70">
+        {{ available_count }} vehicle{{ '' if available_count == 1 else 's' }} available now
+      </p>
     </div>
-    <p class="mt-6 text-sm text-white/70">
-      {{ available_count }} vehicle{{ '' if available_count == 1 else 's' }} available now
-    </p>
+
+    {# Decorative on large screens only: below lg the single column already
+       reads well, and the photo would only push the pitch below the fold. #}
+    <div class="hidden aspect-[4/3] overflow-hidden rounded-2xl lg:block">
+      <picture>
+        <source srcset="{{ url_for('static', filename='img/login-car.webp') }}" type="image/webp">
+        <img src="{{ url_for('static', filename='img/login-car.jpg') }}" alt=""
+             class="h-full w-full object-cover object-[65%_center]">
+      </picture>
+    </div>
   </div>
 </section>
 
