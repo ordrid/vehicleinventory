@@ -254,13 +254,39 @@ def test_an_admin_still_sees_every_action_control(admin_client, sample_vehicle):
     assert f"/admin/vehicles/{sample_vehicle}/toggle-active" in detail
 
 
-def test_the_admin_dashboard_counts_the_real_fleet(admin_client, sample_vehicle):
-    response = admin_client.get("/admin")
-    assert response.status_code == 200
-    assert b"Rental Management Dashboard" in response.data
-    assert b"Total Vehicles" in response.data
-    assert b"Currently Rented" in response.data
-    assert b"Pending Reservations" in response.data
+def test_the_admin_dashboard_counts_the_real_fleet(app, admin_client):
+    """The cards must reflect real queries, not hardcoded markup.
+
+    The requirements forbid fake static statistics, so this seeds a fleet with a
+    deliberately lopsided status mix and asserts the rendered figures match it.
+    A template with the numbers baked in would pass a label-only test.
+    """
+    from decimal import Decimal
+
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    mix = ["AVAILABLE"] * 4 + ["RESERVED"] * 3 + ["RENTED"] * 2 + ["MAINTENANCE"] * 1
+    with app.app_context():
+        db = get_session()
+        for i, status in enumerate(mix):
+            db.add(Vehicle(
+                plate_number=f"DSH {1000 + i}", brand="Toyota", model="Vios", year=2024,
+                vehicle_type="Sedan", daily_rate=Decimal("1500.00"), status=status,
+            ))
+        db.commit()
+
+    html = admin_client.get("/admin").get_data(as_text=True)
+
+    assert "Rental Management Dashboard" in html
+    for label in ["Total Vehicles", "Available", "Reserved", "Currently Rented", "Under Maintenance"]:
+        assert label in html
+
+    import re
+
+    figures = [v.strip() for v in re.findall(r'stat-value[^>]*>([^<]+)<', html)]
+    # total, available, reserved, rented, maintenance, then the four operations cards
+    assert figures[:5] == ["10", "4", "3", "2", "1"]
 
 
 def test_revenue_is_zero_until_a_rental_completes(admin_client, sample_vehicle):
