@@ -61,3 +61,84 @@ def test_rental_rates_current_reuses_the_row_and_keeps_edits(app):
         assert again.id == 1
         assert again.insurance_fee_per_day == Decimal("350.00")
         assert db.query(RentalRates).count() == 1
+
+
+def test_reservation_and_rental_statuses_match_the_requirements():
+    from rental.models import RENTAL_STATUSES, RESERVATION_STATUSES
+
+    assert RESERVATION_STATUSES == [
+        "PENDING", "CONFIRMED", "CANCELLED", "COMPLETED", "REJECTED",
+    ]
+    assert RENTAL_STATUSES == ["ACTIVE", "COMPLETED"]
+
+
+def test_every_reservation_and_rental_status_has_a_badge_colour():
+    from rental.models import (
+        RENTAL_BADGES, RENTAL_STATUSES, RESERVATION_BADGES, RESERVATION_STATUSES,
+    )
+
+    assert set(RESERVATION_BADGES) == set(RESERVATION_STATUSES)
+    assert set(RENTAL_BADGES) == set(RENTAL_STATUSES)
+
+
+def test_reservation_number_is_padded_from_the_row_id():
+    from rental.models import Reservation
+
+    reservation = Reservation()
+    reservation.id = 1
+    reservation.assign_number()
+    assert reservation.reservation_number == "RES-00001"
+
+
+def test_rental_number_is_padded_from_the_row_id():
+    from rental.models import Rental
+
+    rental = Rental()
+    rental.id = 42
+    rental.assign_number()
+    assert rental.rental_number == "RNT-00042"
+
+
+def test_unfinished_maintenance_blocks_booking_and_finished_does_not():
+    from rental.models import Maintenance
+
+    assert Maintenance(status="SCHEDULED").blocks_booking is True
+    assert Maintenance(status="IN_PROGRESS").blocks_booking is True
+    assert Maintenance(status="COMPLETED").blocks_booking is False
+
+
+def test_a_new_vehicle_defaults_to_available_and_active(app):
+    from decimal import Decimal
+
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    with app.app_context():
+        db = get_session()
+        vehicle = Vehicle(
+            plate_number="DEF 0001",
+            brand="Toyota",
+            model="Vios",
+            year=2024,
+            vehicle_type="Sedan",
+            daily_rate=Decimal("1500.00"),
+        )
+        db.add(vehicle)
+        db.commit()
+
+        assert vehicle.status == "AVAILABLE"
+        assert vehicle.is_active is True
+        assert vehicle.seats == 5
+        assert vehicle.transmission == "Automatic"
+        assert vehicle.fuel_type == "Gasoline"
+
+
+def test_the_new_tables_are_created(app):
+    from sqlalchemy import inspect
+
+    from rental.db import get_engine
+
+    with app.app_context():
+        tables = set(inspect(get_engine()).get_table_names())
+
+    assert {"reservations", "rentals", "maintenance", "rental_rates"} <= tables

@@ -4,7 +4,7 @@
 /* The status pill colours are chosen in Python (models.STATUS_BADGES), so they
    never appear literally in a template and Tailwind cannot find them by
    scanning. Listing them here keeps them in the build. */
-@source inline("pill-green pill-blue pill-amber pill-slate");
+@source inline("pill-green pill-blue pill-amber pill-slate pill-red");
 
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -65,6 +65,7 @@
   .pill-blue  { @apply bg-sky-100 text-sky-700; }
   .pill-amber { @apply bg-amber-100 text-amber-800; }
   .pill-slate { @apply bg-slate-200 text-slate-700; }
+  .pill-red   { @apply bg-red-100 text-red-700; }
 
   /* ---- Form controls ----------------------------------------------- */
   .field-label { @apply mb-1.5 block text-sm font-medium text-ink; }

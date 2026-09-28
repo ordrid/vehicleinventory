@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -153,3 +153,163 @@ class RentalRates(Base):
             session.add(rates)
             session.commit()
         return rates
+
+
+RESERVATION_STATUSES = ["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED", "REJECTED"]
+RENTAL_STATUSES = ["ACTIVE", "COMPLETED"]
+MAINTENANCE_STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED"]
+
+RESERVATION_BADGES = {
+    "PENDING": "pill-amber",
+    "CONFIRMED": "pill-green",
+    "CANCELLED": "pill-slate",
+    "COMPLETED": "pill-blue",
+    "REJECTED": "pill-red",
+}
+
+RENTAL_BADGES = {
+    "ACTIVE": "pill-blue",
+    "COMPLETED": "pill-green",
+}
+
+
+class Reservation(Base):
+    """A customer's request to rent one vehicle over one date range."""
+
+    __tablename__ = "reservations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reservation_number: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id"), nullable=False)
+
+    # One datetime per endpoint rather than a separate date and time column:
+    # overlap comparison is the most important query in the system and it needs
+    # a single comparable value. Forms still collect date and time separately.
+    pickup_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    return_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    pickup_location: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    return_location: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    want_additional_driver: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    want_insurance: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    rental_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rental_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # The rates are snapshotted here on purpose. An admin editing the vehicle's
+    # daily rate afterwards must not change what this customer was quoted.
+    daily_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    hourly_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    base_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00")
+    )
+    additional_fees: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00")
+    )
+    total_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00")
+    )
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+    def assign_number(self) -> None:
+        """Set the human-facing reference from the row id, e.g. RES-00001.
+
+        Called after the insert has been flushed and inside the same
+        transaction, so the id exists and two concurrent requests cannot be
+        handed the same number.
+        """
+        self.reservation_number = f"RES-{self.id:05d}"
+
+    @property
+    def badge_class(self) -> str:
+        return RESERVATION_BADGES.get(self.status, "pill-slate")
+
+    def __repr__(self) -> str:
+        return f"<Reservation {self.reservation_number} {self.status}>"
+
+
+class Rental(Base):
+    """A confirmed reservation that has actually been picked up."""
+
+    __tablename__ = "rentals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    rental_number: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
+    reservation_id: Mapped[int] = mapped_column(
+        ForeignKey("reservations.id"), unique=True, nullable=False
+    )
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id"), nullable=False)
+    # Denormalised so the reports can group without joining through reservations.
+    customer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+    actual_pickup: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expected_return: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    actual_return: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    rental_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rental_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    late_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    base_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00")
+    )
+    late_fee: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00")
+    )
+    additional_fees: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00")
+    )
+    total_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0.00")
+    )
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+    def assign_number(self) -> None:
+        """Set the human-facing reference from the row id, e.g. RNT-00042."""
+        self.rental_number = f"RNT-{self.id:05d}"
+
+    @property
+    def badge_class(self) -> str:
+        return RENTAL_BADGES.get(self.status, "pill-slate")
+
+    def __repr__(self) -> str:
+        return f"<Rental {self.rental_number} {self.status}>"
+
+
+class Maintenance(Base):
+    """A window during which a vehicle is off the road."""
+
+    __tablename__ = "maintenance"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id"), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    expected_end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    actual_end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="SCHEDULED")
+    cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+    @property
+    def blocks_booking(self) -> bool:
+        """True while this window still takes the vehicle off the road.
+
+        A completed record is history and blocks nothing; a scheduled future one
+        blocks its dates, which is what stops a customer booking over it.
+        """
+        return self.status != "COMPLETED"
+
+    def __repr__(self) -> str:
+        return f"<Maintenance vehicle={self.vehicle_id} {self.status}>"
