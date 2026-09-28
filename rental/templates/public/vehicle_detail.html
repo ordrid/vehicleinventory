@@ -5,12 +5,6 @@
 {% block content %}
 <div class="grid gap-8 lg:grid-cols-[3fr_2fr]">
   <div class="flex flex-col gap-6">
-    <div class="card overflow-hidden">
-      <div class="flex aspect-[16/10] w-full items-center justify-center bg-slate-100">
-        {{ vehicle_image(vehicle) }}
-      </div>
-    </div>
-
     <div>
       <h1 class="page-title">{{ vehicle.display_name }}</h1>
       <div class="mt-2 flex items-center gap-2.5">
@@ -19,31 +13,37 @@
       </div>
     </div>
 
+    <div class="card overflow-hidden">
+      <div class="vehicle-card-media">
+        {{ vehicle_image(vehicle) }}
+      </div>
+    </div>
+
     <div class="card p-5">
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div>
           <p class="stat-label">Category</p>
-          <p class="stat-value">{{ vehicle.vehicle_type }}</p>
+          <p class="text-sm font-semibold text-ink">{{ vehicle.vehicle_type }}</p>
         </div>
         <div>
           <p class="stat-label">Year</p>
-          <p class="stat-value">{{ vehicle.year }}</p>
+          <p class="text-sm font-semibold text-ink">{{ vehicle.year }}</p>
         </div>
         <div>
           <p class="stat-label">Seats</p>
-          <p class="stat-value">{{ vehicle.seats }}</p>
+          <p class="text-sm font-semibold text-ink">{{ vehicle.seats }}</p>
         </div>
         <div>
           <p class="stat-label">Transmission</p>
-          <p class="stat-value">{{ vehicle.transmission }}</p>
+          <p class="text-sm font-semibold text-ink">{{ vehicle.transmission }}</p>
         </div>
         <div>
           <p class="stat-label">Fuel type</p>
-          <p class="stat-value">{{ vehicle.fuel_type }}</p>
+          <p class="text-sm font-semibold text-ink">{{ vehicle.fuel_type }}</p>
         </div>
         <div>
           <p class="stat-label">Plate number</p>
-          <p class="stat-value">{{ vehicle.plate_number }}</p>
+          <p class="text-sm font-semibold text-ink">{{ vehicle.plate_number }}</p>
         </div>
       </div>
     </div>
