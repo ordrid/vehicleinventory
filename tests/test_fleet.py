@@ -193,3 +193,62 @@ def test_missing_vehicle_returns_the_custom_404_page(admin_client):
     response = admin_client.get("/admin/vehicles/999999/edit")
     assert response.status_code == 404
     assert b"Page not found" in response.data
+
+
+def test_the_fleet_table_shows_the_daily_rate(admin_client, sample_vehicle):
+    assert "₱2,200.00".encode() in admin_client.get("/admin/vehicles").data
+
+
+def test_adding_a_vehicle_without_a_rate_is_refused(admin_client):
+    response = admin_client.post("/admin/vehicles/add", data=dict(NEW_VEHICLE, daily_rate=""))
+    assert response.status_code == 200
+    assert b"Daily rate is required." in response.data
+
+
+def test_a_negative_rate_is_refused(admin_client):
+    response = admin_client.post("/admin/vehicles/add", data=dict(NEW_VEHICLE, daily_rate="-50"))
+    assert b"cannot be negative" in response.data
+
+
+def test_toggle_active_disables_and_re_enables_a_vehicle(app, admin_client, sample_vehicle):
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    admin_client.post(f"/admin/vehicles/{sample_vehicle}/toggle-active")
+    with app.app_context():
+        assert get_session().get(Vehicle, sample_vehicle).is_active is False
+
+    admin_client.post(f"/admin/vehicles/{sample_vehicle}/toggle-active")
+    with app.app_context():
+        assert get_session().get(Vehicle, sample_vehicle).is_active is True
+
+
+def test_toggle_active_refuses_a_get(admin_client, sample_vehicle):
+    assert admin_client.get(f"/admin/vehicles/{sample_vehicle}/toggle-active").status_code == 405
+
+
+def test_a_customer_cannot_disable_a_vehicle(customer_client, sample_vehicle):
+    assert customer_client.post(
+        f"/admin/vehicles/{sample_vehicle}/toggle-active"
+    ).status_code == 403
+
+
+def test_an_admin_still_sees_every_action_control(admin_client, sample_vehicle):
+    """Guard against a role flag silently disappearing from the templates.
+
+    Jinja renders an undefined name as falsy rather than raising, so renaming or
+    dropping the flag these templates test would hide every action control from
+    every admin without a single test failing. Task 6 shipped exactly that bug
+    (`is_editor` outlived the context processor that defined it) and it was
+    caught by eye, not by the suite -- because the one test covering it had been
+    deleted along with guest mode. This is that test, restored.
+    """
+    listing = admin_client.get("/admin/vehicles").get_data(as_text=True)
+    assert "Add Vehicle" in listing
+    assert f"/admin/vehicles/{sample_vehicle}/edit" in listing
+    assert f"/admin/vehicles/{sample_vehicle}/delete" in listing
+
+    detail = admin_client.get(f"/admin/vehicles/{sample_vehicle}").get_data(as_text=True)
+    assert f"/admin/vehicles/{sample_vehicle}/edit" in detail
+    assert f"/admin/vehicles/{sample_vehicle}/delete" in detail
+    assert f"/admin/vehicles/{sample_vehicle}/toggle-active" in detail

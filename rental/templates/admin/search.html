@@ -22,7 +22,7 @@
       <label class="field-label" for="status">Status</label>
       <select class="field" id="status" name="status">
         <option value="">Any status</option>
-        {% for option in STATUSES %}
+        {% for option in VEHICLE_STATUSES %}
           <option value="{{ option }}" {% if option == status %}selected{% endif %}>{{ option }}</option>
         {% endfor %}
       </select>

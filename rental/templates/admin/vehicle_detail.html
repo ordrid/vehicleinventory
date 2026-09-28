@@ -11,20 +11,36 @@
     <h1 class="page-title font-mono">{{ vehicle.plate_number }}</h1>
     <p class="mt-1 text-sm text-muted">{{ vehicle.year }} {{ vehicle.brand }} {{ vehicle.model }}</p>
   </div>
-  <div class="no-print flex gap-2">
+  <div class="no-print flex flex-wrap items-center gap-2">
     <a class="btn btn-ghost" href="{{ url_for('admin_fleet.list_vehicles') }}">Back to vehicles</a>
+    <a class="btn btn-ghost" href="{{ url_for('public.vehicle_detail', vehicle_id=vehicle.id) }}">View as a customer</a>
     {% if is_admin %}
       <a class="btn btn-primary" href="{{ url_for('admin_fleet.edit_vehicle', vehicle_id=vehicle.id) }}">Edit</a>
       <a class="btn btn-ghost text-red-600 hover:bg-red-50"
          href="{{ url_for('admin_fleet.delete_vehicle', vehicle_id=vehicle.id) }}">Delete</a>
+      <form method="post" action="{{ url_for('admin_fleet.toggle_active', vehicle_id=vehicle.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn {% if vehicle.is_active %}btn-ghost{% else %}btn-success{% endif %}">
+          {% if vehicle.is_active %}Disable vehicle{% else %}Re-enable vehicle{% endif %}
+        </button>
+      </form>
     {% endif %}
   </div>
 </div>
 
+{% if is_admin %}
+  <p class="field-hint no-print -mt-3 mb-6">
+    A disabled vehicle leaves the storefront and cannot be booked. Its record and history are kept.
+  </p>
+{% endif %}
+
 <div class="card overflow-hidden">
   <header class="flex items-center justify-between border-b border-line px-5 py-4">
     <h2 class="font-semibold text-ink">Details</h2>
-    <span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span>
+    <div class="flex items-center gap-2">
+      <span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span>
+      {% if not vehicle.is_active %}<span class="pill pill-slate">DISABLED</span>{% endif %}
+    </div>
   </header>
 
   <dl class="grid gap-x-8 gap-y-5 px-5 py-6 sm:grid-cols-2">
