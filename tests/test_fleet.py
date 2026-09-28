@@ -205,9 +205,74 @@ def test_adding_a_vehicle_without_a_rate_is_refused(admin_client):
     assert b"Daily rate is required." in response.data
 
 
-def test_a_negative_rate_is_refused(admin_client):
+def test_a_negative_rate_is_refused(app, admin_client):
     response = admin_client.post("/admin/vehicles/add", data=dict(NEW_VEHICLE, daily_rate="-50"))
+    assert response.status_code == 200
     assert b"cannot be negative" in response.data
+
+    # The message is not the point -- the point is that nothing was written.
+    from sqlalchemy import select
+
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    with app.app_context():
+        plate = NEW_VEHICLE["plate_number"].strip().upper()
+        assert get_session().scalars(select(Vehicle).where(Vehicle.plate_number == plate)).first() is None
+
+
+def test_the_rates_page_shows_the_current_fees(admin_client):
+    response = admin_client.get("/admin/rates")
+    assert response.status_code == 200
+    assert b"Rental Rates" in response.data
+    assert b"500.00" in response.data
+
+
+def test_saving_new_rates_persists_them(app, admin_client):
+    from decimal import Decimal
+
+    from rental.db import get_session
+    from rental.models import RentalRates
+
+    response = admin_client.post(
+        "/admin/rates",
+        data={
+            "additional_driver_fee_per_day": "650.00",
+            "insurance_fee_per_day": "0",
+            "late_fee_per_day": "900.00",
+        },
+        follow_redirects=True,
+    )
+    assert b"Rental rates were updated." in response.data
+
+    with app.app_context():
+        rates = RentalRates.current(get_session())
+        assert rates.additional_driver_fee_per_day == Decimal("650.00")
+        # Zero is a legitimate fee -- the form must not treat it as missing.
+        assert rates.insurance_fee_per_day == Decimal("0.00")
+
+
+def test_a_negative_fee_is_refused(admin_client):
+    response = admin_client.post(
+        "/admin/rates",
+        data={
+            "additional_driver_fee_per_day": "-1",
+            "insurance_fee_per_day": "300.00",
+            "late_fee_per_day": "800.00",
+        },
+    )
+    assert b"cannot be negative" in response.data
+
+
+def test_a_customer_cannot_change_the_rates(customer_client):
+    assert customer_client.post(
+        "/admin/rates",
+        data={
+            "additional_driver_fee_per_day": "1.00",
+            "insurance_fee_per_day": "1.00",
+            "late_fee_per_day": "1.00",
+        },
+    ).status_code == 403
 
 
 def test_toggle_active_disables_and_re_enables_a_vehicle(app, admin_client, sample_vehicle):
