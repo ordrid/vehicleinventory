@@ -3057,6 +3057,27 @@ def test_a_customer_cannot_disable_a_vehicle(customer_client, sample_vehicle):
     assert customer_client.post(
         f"/admin/vehicles/{sample_vehicle}/toggle-active"
     ).status_code == 403
+
+
+def test_an_admin_still_sees_every_action_control(admin_client, sample_vehicle):
+    """Guard against a role flag silently disappearing from the templates.
+
+    Jinja renders an undefined name as falsy rather than raising, so renaming or
+    dropping the flag these templates test would hide every action control from
+    every admin without a single test failing. Task 6 shipped exactly that bug
+    (`is_editor` outlived the context processor that defined it) and it was
+    caught by eye, not by the suite -- because the one test covering it had been
+    deleted along with guest mode. This is that test, restored.
+    """
+    listing = admin_client.get("/admin/vehicles").get_data(as_text=True)
+    assert "Add Vehicle" in listing
+    assert f"/admin/vehicles/{sample_vehicle}/edit" in listing
+    assert f"/admin/vehicles/{sample_vehicle}/delete" in listing
+
+    detail = admin_client.get(f"/admin/vehicles/{sample_vehicle}").get_data(as_text=True)
+    assert f"/admin/vehicles/{sample_vehicle}/edit" in detail
+    assert f"/admin/vehicles/{sample_vehicle}/delete" in detail
+    assert f"/admin/vehicles/{sample_vehicle}/toggle-active" in detail
 ```
 
 - [ ] **Step 2: Run them and watch them fail**
