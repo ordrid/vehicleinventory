@@ -39,7 +39,7 @@
     <div class="flex items-end gap-2">
       <button type="submit" class="btn btn-primary">{{ icon('search', 'h-4 w-4') }} Search</button>
       {% if searched %}
-        <a class="btn btn-ghost" href="{{ url_for('vehicles.search') }}">Reset</a>
+        <a class="btn btn-ghost" href="{{ url_for('admin_fleet.search') }}">Reset</a>
       {% endif %}
     </div>
   </div>

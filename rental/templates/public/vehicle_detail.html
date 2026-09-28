@@ -1,0 +1,8 @@
+{% extends 'layout_public.html' %}
+{% block title %}{{ vehicle.brand }} {{ vehicle.model }} &middot; Vehicle Rental{% endblock %}
+
+{# Placeholder. Task 14 builds the real vehicle detail page. #}
+{% block content %}
+<h1 class="page-title">{{ vehicle.brand }} {{ vehicle.model }}</h1>
+<p class="mt-1 text-sm text-muted">{{ vehicle.plate_number }}</p>
+{% endblock %}

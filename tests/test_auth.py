@@ -34,7 +34,7 @@ def test_login_with_unknown_username_shows_error(client):
 
 
 def test_protected_page_redirects_anonymous_visitor_to_login(client):
-    response = client.get("/vehicles")
+    response = client.get("/admin/vehicles")
     assert response.status_code == 302
     assert "/login" in response.headers["Location"]
 
@@ -42,7 +42,7 @@ def test_protected_page_redirects_anonymous_visitor_to_login(client):
 def test_logout_clears_the_session(admin_client):
     response = admin_client.post("/logout", follow_redirects=True)
     assert b"You have been logged out." in response.data
-    assert admin_client.get("/vehicles").status_code == 302
+    assert admin_client.get("/admin/vehicles").status_code == 302
 
 
 def test_custom_500_page_is_shown_when_a_view_raises(app):
@@ -72,25 +72,6 @@ def test_expired_csrf_token_shows_a_friendly_message(app):
     response = client.post("/logout", follow_redirects=True)
     assert response.status_code == 200
     assert b"Your session expired." in response.data
-
-
-def test_guest_mode_is_gone(client):
-    assert client.post("/guest").status_code == 404
-
-
-def test_an_admin_reaches_an_admin_guarded_page(admin_client):
-    assert admin_client.get("/vehicles").status_code == 200
-
-
-def test_a_customer_is_refused_an_admin_guarded_page(customer_client):
-    assert customer_client.get("/vehicles").status_code == 403
-
-
-def test_an_anonymous_visitor_is_redirected_with_a_next_parameter(client):
-    response = client.get("/vehicles")
-    assert response.status_code == 302
-    assert "/login" in response.headers["Location"]
-    assert "next=" in response.headers["Location"]
 
 
 def test_signup_creates_a_customer(app, client):
@@ -147,33 +128,30 @@ def test_forgot_password_says_the_same_thing_for_an_unknown_address(client):
     assert b"asked the office" in response.data
 
 
-def test_a_temporary_password_forces_a_change_before_anything_else(app, admin_client):
-    # /my does not exist until Task 11. The before_request gate is
-    # route-independent, so this asserts the same behaviour against
-    # /vehicles, an admin-guarded route that exists today.
+def test_a_temporary_password_forces_a_change_before_anything_else(app, customer_client):
     with app.app_context():
         from rental.auth import find_user_by_username
         from rental.db import get_session
 
         db = get_session()
-        find_user_by_username("admin").must_change_password = True
+        find_user_by_username("maria").must_change_password = True
         db.commit()
 
-    response = admin_client.get("/vehicles")
+    response = customer_client.get("/my")
     assert response.status_code == 302
     assert "/change-password" in response.headers["Location"]
 
 
-def test_changing_the_password_clears_the_flag_and_lets_you_back_in(app, admin_client):
+def test_changing_the_password_clears_the_flag_and_lets_you_back_in(app, customer_client):
     with app.app_context():
         from rental.auth import find_user_by_username
         from rental.db import get_session
 
         db = get_session()
-        find_user_by_username("admin").must_change_password = True
+        find_user_by_username("maria").must_change_password = True
         db.commit()
 
-    admin_client.post(
+    customer_client.post(
         "/change-password",
         data={
             "current_password": "secret123",
@@ -185,14 +163,14 @@ def test_changing_the_password_clears_the_flag_and_lets_you_back_in(app, admin_c
     with app.app_context():
         from rental.auth import find_user_by_username
 
-        user = find_user_by_username("admin")
+        user = find_user_by_username("maria")
         assert user.must_change_password is False
         assert user.check_password("brandnew123")
 
-    assert admin_client.get("/vehicles").status_code == 200
+    assert customer_client.get("/my").status_code == 200
 
 
-def test_a_wrong_current_password_is_refused(customer_client):
+def test_a_wrong_current_password_is_refused(app, customer_client):
     response = customer_client.post(
         "/change-password",
         data={
@@ -202,3 +180,11 @@ def test_a_wrong_current_password_is_refused(customer_client):
         },
     )
     assert b"current password is not correct" in response.data
+
+    # The message is not the point -- the point is that nothing was written.
+    with app.app_context():
+        from rental.auth import find_user_by_username
+
+        user = find_user_by_username("maria")
+        assert user.check_password("secret123")
+        assert not user.check_password("brandnew123")

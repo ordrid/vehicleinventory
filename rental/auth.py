@@ -87,13 +87,8 @@ def find_user_by_email(email: str) -> User | None:
 
 
 def home_for(user: User) -> str:
-    """Where a freshly signed-in person belongs after signing in.
-
-    Both roles land on the same page for now. Task 11 splits this into the
-    admin console and the customer portal, once those blueprints exist. It is
-    deliberately a function so that change is one line in one place.
-    """
-    return url_for("vehicles.dashboard")
+    """Where a freshly signed-in person belongs: their console or their portal."""
+    return url_for("admin_dashboard.dashboard") if user.is_admin else url_for("portal.dashboard")
 
 
 def safe_next_page(target: str | None, user: User) -> str:

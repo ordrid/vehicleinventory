@@ -15,12 +15,15 @@
   </a>
 {% endmacro %}
 
-{{ link('vehicles.dashboard', 'Dashboard', 'dashboard') }}
+{{ link('admin_dashboard.dashboard', 'Dashboard', 'dashboard') }}
 
 {{ section('Fleet Management') }}
-{{ link('vehicles.list_vehicles', 'Vehicles', 'car') }}
-{{ link('vehicles.add_vehicle', 'Add Vehicle', 'plus') }}
-{{ link('vehicles.search', 'Search Fleet', 'search') }}
+{{ link('admin_fleet.list_vehicles', 'Vehicles', 'car') }}
+{{ link('admin_fleet.add_vehicle', 'Add Vehicle', 'plus') }}
+{{ link('admin_fleet.search', 'Search Fleet', 'search') }}
+
+{{ section('Financial') }}
+{{ link('admin_rates.rates', 'Rental Rates', 'money') }}
 
 {{ section('Reports') }}
 {{ link('reports.reports', 'Fleet Reports', 'report') }}

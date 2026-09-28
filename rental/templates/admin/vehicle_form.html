@@ -19,7 +19,7 @@
     {% include 'partials/_vehicle_form_fields.html' %}
 
     <div class="mt-7 flex justify-end gap-2 border-t border-line pt-5">
-      <a class="btn btn-ghost" href="{{ url_for('vehicles.list_vehicles') }}">Cancel</a>
+      <a class="btn btn-ghost" href="{{ url_for('admin_fleet.list_vehicles') }}">Cancel</a>
       {{ form.submit(class="btn btn-primary") }}
     </div>
   </form>

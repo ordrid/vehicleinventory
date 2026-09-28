@@ -1,4 +1,4 @@
-"""Dashboard plus the create / read / update / delete and search pages for vehicles."""
+"""The admin fleet pages: create, read, update, delete and search."""
 
 from __future__ import annotations
 
@@ -6,14 +6,16 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from .auth import admin_required
-from .db import get_session
-from .forms import DeleteForm, VehicleForm
-from .models import VEHICLE_STATUSES, VEHICLE_TYPES, Vehicle
+from ..auth import admin_required
+from ..db import get_session
+from ..forms import DeleteForm, VehicleForm
+from ..models import VEHICLE_STATUSES, VEHICLE_TYPES, Vehicle
 
-bp = Blueprint("vehicles", __name__)
+bp = Blueprint("admin_fleet", __name__, url_prefix="/admin/vehicles")
 
+# The admin table shows 10 rows a page; the storefront grid shows 12 cards.
 PER_PAGE = 10
+GRID_PER_PAGE = 12
 
 # Only these columns may be sorted on. Mapping the query-string value to a real
 # column here means a user cannot put arbitrary SQL in the ?sort= parameter.
@@ -21,6 +23,7 @@ SORTABLE_COLUMNS = {
     "plate": Vehicle.plate_number,
     "brand": Vehicle.brand,
     "year": Vehicle.year,
+    "rate": Vehicle.daily_rate,
 }
 
 
@@ -70,7 +73,7 @@ def apply_sorting(query, sort: str, direction: str):
     return query.order_by(column.desc() if direction == "desc" else column.asc())
 
 
-def paginate(query, page: int):
+def paginate(query, page: int, per_page: int = PER_PAGE):
     """Run the query for one page of results and return (rows, page, total_pages, total).
 
     Counting and slicing are done in SQL rather than in Python, so a large table
@@ -78,31 +81,16 @@ def paginate(query, page: int):
     """
     db = get_session()
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+    total_pages = max(1, (total + per_page - 1) // per_page)
     page = min(max(page, 1), total_pages)
-    rows = db.scalars(query.limit(PER_PAGE).offset((page - 1) * PER_PAGE)).all()
+    rows = db.scalars(query.limit(per_page).offset((page - 1) * per_page)).all()
     return rows, page, total_pages, total
 
 
-@bp.route("/")
-@admin_required
-def dashboard():
-    """Show the totals for the whole fleet: how many vehicles, and how many per status."""
-    db = get_session()
-    total = db.scalar(select(func.count()).select_from(Vehicle)) or 0
-
-    # One grouped query instead of four separate counts.
-    grouped = db.execute(
-        select(Vehicle.status, func.count(Vehicle.id)).group_by(Vehicle.status)
-    ).all()
-    counts = {status: 0 for status in VEHICLE_STATUSES}
-    for status, count in grouped:
-        counts[status] = count
-
-    return render_template("admin/dashboard.html", total=total, counts=counts)
-
-
-@bp.route("/vehicles")
+# An empty rule registers exactly "/admin/vehicles". @bp.route("/") would
+# register "/admin/vehicles/", and a request for "/admin/vehicles" would then
+# answer 308 rather than 200.
+@bp.route("")
 @admin_required
 def list_vehicles():
     """List every vehicle in a table, 10 per page, sortable by plate, brand or year."""
@@ -124,19 +112,19 @@ def list_vehicles():
     )
 
 
-@bp.route("/vehicles/<int:vehicle_id>")
+@bp.route("/<int:vehicle_id>")
 @admin_required
 def view_vehicle(vehicle_id: int):
     """Show one vehicle's full record, including the fields the table leaves out.
 
-    ``/vehicles/add`` never reaches this route because the ``int`` converter
+    ``/admin/vehicles/add`` never reaches this route because the ``int`` converter
     refuses to match the word "add".
     """
     vehicle = get_vehicle_or_404(vehicle_id)
     return render_template("admin/vehicle_detail.html", vehicle=vehicle)
 
 
-@bp.route("/vehicles/add", methods=["GET", "POST"])
+@bp.route("/add", methods=["GET", "POST"])
 @admin_required
 def add_vehicle():
     """Show the new-vehicle form and save it when everything validates.
@@ -165,12 +153,12 @@ def add_vehicle():
                 form.plate_number.errors.append("That plate number is already taken.")
             else:
                 flash(f"Vehicle {vehicle.plate_number} was added.", "success")
-                return redirect(url_for("vehicles.list_vehicles"))
+                return redirect(url_for("admin_fleet.list_vehicles"))
 
     return render_template("admin/vehicle_form.html", form=form, heading="Add Vehicle", vehicle=None)
 
 
-@bp.route("/vehicles/<int:vehicle_id>/edit", methods=["GET", "POST"])
+@bp.route("/<int:vehicle_id>/edit", methods=["GET", "POST"])
 @admin_required
 def edit_vehicle(vehicle_id: int):
     """Show the edit form pre-filled with the vehicle's details and save the changes.
@@ -196,14 +184,14 @@ def edit_vehicle(vehicle_id: int):
                 form.plate_number.errors.append("That plate number is already taken.")
             else:
                 flash(f"Vehicle {vehicle.plate_number} was updated.", "success")
-                return redirect(url_for("vehicles.list_vehicles"))
+                return redirect(url_for("admin_fleet.list_vehicles"))
 
     return render_template(
         "admin/vehicle_form.html", form=form, heading="Edit Vehicle", vehicle=vehicle
     )
 
 
-@bp.route("/vehicles/<int:vehicle_id>/delete", methods=["GET", "POST"])
+@bp.route("/<int:vehicle_id>/delete", methods=["GET", "POST"])
 @admin_required
 def delete_vehicle(vehicle_id: int):
     """Ask for confirmation on GET, and actually delete the vehicle on POST.
@@ -221,9 +209,29 @@ def delete_vehicle(vehicle_id: int):
         db.delete(vehicle)
         db.commit()
         flash(f"Vehicle {plate} was deleted.", "success")
-        return redirect(url_for("vehicles.list_vehicles"))
+        return redirect(url_for("admin_fleet.list_vehicles"))
 
     return render_template("admin/vehicle_delete.html", vehicle=vehicle, form=form)
+
+
+@bp.route("/<int:vehicle_id>/toggle-active", methods=["POST"])
+@admin_required
+def toggle_active(vehicle_id: int):
+    """Disable a vehicle, or bring a disabled one back.
+
+    A disabled vehicle keeps its history but leaves the storefront and cannot be
+    booked at all, which is what requirement 16's "Disable Vehicle" means. POST
+    only, so it cannot be triggered by following a link.
+    """
+    vehicle = get_vehicle_or_404(vehicle_id)
+    vehicle.is_active = not vehicle.is_active
+    get_session().commit()
+    flash(
+        f"Vehicle {vehicle.plate_number} was "
+        f"{'re-enabled' if vehicle.is_active else 'disabled'}.",
+        "success",
+    )
+    return redirect(url_for("admin_fleet.view_vehicle", vehicle_id=vehicle.id))
 
 
 @bp.route("/search")

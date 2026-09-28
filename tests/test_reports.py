@@ -7,7 +7,7 @@ import io
 
 
 def test_reports_page_shows_the_three_summary_tables(admin_client, sample_vehicle):
-    response = admin_client.get("/reports")
+    response = admin_client.get("/admin/reports")
     assert response.status_code == 200
     assert b"Vehicles by status" in response.data
     assert b"Vehicles by type" in response.data
@@ -17,11 +17,11 @@ def test_reports_page_shows_the_three_summary_tables(admin_client, sample_vehicl
 
 
 def test_reports_page_requires_login(client):
-    assert client.get("/reports").status_code == 302
+    assert client.get("/admin/reports").status_code == 302
 
 
 def test_csv_export_returns_a_downloadable_file(admin_client, sample_vehicle):
-    response = admin_client.get("/reports/export.csv")
+    response = admin_client.get("/admin/reports/export.csv")
     assert response.status_code == 200
     assert response.mimetype == "text/csv"
     assert "attachment" in response.headers["Content-Disposition"]

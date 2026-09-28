@@ -13,7 +13,7 @@ from .auth import admin_required
 from .db import get_session
 from .models import VEHICLE_STATUSES, VEHICLE_TYPES, Vehicle
 
-bp = Blueprint("reports", __name__)
+bp = Blueprint("reports", __name__, url_prefix="/admin/reports")
 
 CSV_COLUMNS = [
     "id",
@@ -62,7 +62,8 @@ def count_by_year_acquired() -> list[tuple[str, int]]:
     return result
 
 
-@bp.route("/reports")
+# An empty rule registers exactly "/admin/reports"; see admin/dashboard.py.
+@bp.route("")
 @admin_required
 def reports():
     """Show the three summary tables: by status, by vehicle type and by year acquired."""
@@ -87,7 +88,7 @@ def reports():
     )
 
 
-@bp.route("/reports/export.csv")
+@bp.route("/export.csv")
 @admin_required
 def export_csv():
     """Download every vehicle as a CSV file, built with the standard library csv module.

@@ -12,11 +12,11 @@
     <p class="mt-1 text-sm text-muted">{{ vehicle.year }} {{ vehicle.brand }} {{ vehicle.model }}</p>
   </div>
   <div class="no-print flex gap-2">
-    <a class="btn btn-ghost" href="{{ url_for('vehicles.list_vehicles') }}">Back to vehicles</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin_fleet.list_vehicles') }}">Back to vehicles</a>
     {% if is_admin %}
-      <a class="btn btn-primary" href="{{ url_for('vehicles.edit_vehicle', vehicle_id=vehicle.id) }}">Edit</a>
+      <a class="btn btn-primary" href="{{ url_for('admin_fleet.edit_vehicle', vehicle_id=vehicle.id) }}">Edit</a>
       <a class="btn btn-ghost text-red-600 hover:bg-red-50"
-         href="{{ url_for('vehicles.delete_vehicle', vehicle_id=vehicle.id) }}">Delete</a>
+         href="{{ url_for('admin_fleet.delete_vehicle', vehicle_id=vehicle.id) }}">Delete</a>
     {% endif %}
   </div>
 </div>

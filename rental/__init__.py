@@ -8,7 +8,10 @@ from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
-from . import auth, cli, db, reports, vehicles
+from . import auth, cli, db, portal, public, reports
+from .admin import dashboard as admin_dashboard
+from .admin import fleet as admin_fleet
+from .admin import rates as admin_rates
 from .forms import max_year
 from .models import (
     FUEL_TYPES,
@@ -41,7 +44,11 @@ def create_app(config: dict | None = None) -> Flask:
 
     db.init_app(app)
     app.register_blueprint(auth.bp)
-    app.register_blueprint(vehicles.bp)
+    app.register_blueprint(public.bp)
+    app.register_blueprint(portal.bp)
+    app.register_blueprint(admin_dashboard.bp)
+    app.register_blueprint(admin_fleet.bp)
+    app.register_blueprint(admin_rates.bp)
     app.register_blueprint(reports.bp)
     cli.register_cli(app)
     register_template_globals(app)
@@ -101,13 +108,12 @@ def register_error_handlers(app: Flask) -> None:
         """Handle an expired or missing CSRF token with a message instead of a bare 400.
 
         This happens when a page has been left open long enough for the session
-        cookie to expire. Sending the visitor to the login page -- which is a
-        target that exists for everyone -- is friendlier than Flask-WTF's
-        default error page. Task 11 changes this to the public landing page
-        once that blueprint exists.
+        cookie to expire. Sending the visitor to the public landing page --
+        which is reachable by everyone, signed in or not -- is friendlier than
+        Flask-WTF's default error page.
         """
         flash("Your session expired. Please try that again.", "warning")
-        return redirect(url_for("auth.login"))
+        return redirect(url_for("public.landing"))
 
     @app.errorhandler(403)
     def forbidden(error):

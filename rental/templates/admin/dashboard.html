@@ -4,6 +4,7 @@
 
 {% block content %}
 <div class="mb-6">
+  <p class="text-[11px] font-bold uppercase tracking-widest text-muted">Rental Management Dashboard</p>
   <h1 class="page-title">{% if current_username %}Welcome back, {{ current_username }}{% else %}Fleet overview{% endif %}</h1>
   <p class="mt-1 text-sm text-muted">Here is how the fleet looks right now.</p>
 </div>
@@ -44,9 +45,9 @@
 <h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Quick actions</h2>
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
   {% set actions = [
-    ('vehicles.list_vehicles', 'View Vehicles', 'Browse the full list, sorted and paginated.', 'car'),
-    ('vehicles.add_vehicle',   'Add Vehicle',   'Register a new vehicle in the inventory.',    'plus'),
-    ('vehicles.search',        'Search',        'Find a vehicle by plate, make or model.',     'search'),
+    ('admin_fleet.list_vehicles', 'View Vehicles', 'Browse the full list, sorted and paginated.', 'car'),
+    ('admin_fleet.add_vehicle',   'Add Vehicle',   'Register a new vehicle in the inventory.',    'plus'),
+    ('admin_fleet.search',        'Search',        'Find a vehicle by plate, make or model.',     'search'),
     ('reports.reports',        'Reports',       'Summaries, printing and CSV export.',         'report')
   ] %}
   {% for endpoint, title, description, name in actions %}

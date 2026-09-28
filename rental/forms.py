@@ -15,7 +15,15 @@ from wtforms import (
     SubmitField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, EqualTo, Length, NumberRange, Optional, Regexp
+from wtforms.validators import (
+    DataRequired,
+    EqualTo,
+    InputRequired,
+    Length,
+    NumberRange,
+    Optional,
+    Regexp,
+)
 
 from .models import FUEL_TYPES, TRANSMISSIONS, VEHICLE_STATUSES, VEHICLE_TYPES
 
@@ -233,3 +241,26 @@ class ChangePasswordForm(FlaskForm):
         ],
     )
     submit = SubmitField("Change password")
+
+
+class RentalRatesForm(FlaskForm):
+    """The system-wide fee schedule. Nothing in a template hardcodes these."""
+
+    # InputRequired rather than DataRequired: zero is a legitimate fee, and
+    # DataRequired would reject it as missing.
+    additional_driver_fee_per_day = DecimalField(
+        "Additional driver, per day (PHP)",
+        places=2,
+        validators=[InputRequired(), NumberRange(min=0, message="A fee cannot be negative.")],
+    )
+    insurance_fee_per_day = DecimalField(
+        "Insurance, per day (PHP)",
+        places=2,
+        validators=[InputRequired(), NumberRange(min=0, message="A fee cannot be negative.")],
+    )
+    late_fee_per_day = DecimalField(
+        "Late return, per day (PHP)",
+        places=2,
+        validators=[InputRequired(), NumberRange(min=0, message="A fee cannot be negative.")],
+    )
+    submit = SubmitField("Save rates")
