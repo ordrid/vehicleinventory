@@ -17,8 +17,17 @@
 - **Money is `Numeric(10, 2)`.** All arithmetic uses `decimal.Decimal` and is quantised with `.quantize(Decimal("0.01"))`. No float ever touches a peso amount.
 - **Currency symbol is `₱`** and is written directly in templates.
 - **Tailwind output is committed.** After any template or `input.css` change, rebuild with:
-  `uv run tailwindcss -i rental/static/src/input.css -o rental/static/css/output.css --minify`
+  `SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt uv run tailwindcss -i rental/static/src/input.css -o rental/static/css/output.css --minify`
   and commit `output.css`. Vercel runs no build step.
+  The `SSL_CERT_FILE` prefix is required: the standalone CLI downloads itself on
+  first run and fails with `CERTIFICATE_VERIFY_FAILED` without it. The README
+  documents this. A rebuild is only needed when a change touches a `class="..."`
+  attribute or `input.css`; renaming a Python identifier never needs one.
+- **The Tailwind build is scoped to `rental/templates`** by `source(none)` on
+  line 1 of `input.css`. Do not remove it. Without it, v4's automatic detection
+  scans the whole repository and compiles class names out of the Markdown code
+  blocks in `docs/`, putting CSS for templates that do not exist yet into the
+  served stylesheet.
 - **Class names chosen in Python must be listed** in `input.css`'s `@source inline(...)`, or Tailwind will not find them when scanning templates.
 - **Tables are never created at import time.** DDL happens only in `flask` CLI commands.
 - **Product name:** `Vehicle Rental and Reservation System`. **Tagline:** `Online reservation + vehicle availability + automatic rental calculation`.
@@ -3439,6 +3448,31 @@ grep -rniE 'inventor' --include='*.py' --include='*.html' --include='*.css' --in
 
 Every hit must be rewritten. `docs/superpowers/` is excluded because the spec and this plan quote the old name deliberately. Use the substitutions requirement 35 gives: *Vehicle Inventory* → *Vehicle Rental*; *Inventory Management* → *Rental Management*; *Inventory Dashboard* → *Rental Dashboard*; *Add Vehicle to Inventory* → *Add Vehicle*; *Inventory Report* → *Rental Report*. "Fleet Management" is the right name for the admin vehicle section.
 
+- [ ] **Step 1b: Fix the copy that names the renamed columns**
+
+Task 2 renamed `Vehicle.make` to `brand`, but three pieces of user-visible copy
+still describe the free-text search as matching on "make". The search now
+matches `Vehicle.brand`, so this copy names a column that no longer exists.
+Step 1's grep looks only for "inventor" and will not find these:
+
+- `rental/templates/admin/dashboard.html` — the Search quick-action blurb
+  "Find a vehicle by plate, make or model." becomes "...by plate, brand or model."
+- `rental/templates/admin/search.html` — "Match on plate number, make or model,
+  then narrow by status or type." becomes "...plate number, brand or model..."
+- `rental/templates/admin/search.html` — the label `Plate, make or model`
+  becomes `Plate, brand or model`
+
+Leave `rental/templates/base.html`'s "Sign in to make changes" alone — that is
+the ordinary verb, not the field.
+
+Confirm afterwards:
+
+```bash
+grep -rn 'plate, make\|plate number, make\|by plate, make' --include='*.html' rental/
+```
+
+Expected: no output.
+
 - [ ] **Step 2: Rewrite the login page**
 
 `auth/login.html` keeps its full-bleed split layout and its photograph. The panel copy becomes:
@@ -3517,11 +3551,13 @@ With the server still running, open `/`, `/vehicles` and `/admin` at 360 px wide
 - [ ] **Step 9: Confirm the stylesheet is current**
 
 ```bash
-uv run tailwindcss -i rental/static/src/input.css -o rental/static/css/output.css --minify
+SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt uv run tailwindcss -i rental/static/src/input.css -o rental/static/css/output.css --minify
 git status --porcelain rental/static/css/output.css
 ```
 
-Expected: no output — the committed stylesheet already matches the templates. If it changed, commit it.
+Expected: no output — the committed stylesheet already matches the templates. If
+it changed, commit it. This check is only meaningful because the Tailwind version
+bump was taken once, in its own commit, before the feature tasks began.
 
 - [ ] **Step 10: Commit**
 
