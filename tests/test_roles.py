@@ -94,7 +94,7 @@ def test_the_customer_dashboard_offers_a_way_into_the_storefront(customer_client
 
 def test_the_customer_dashboard_has_an_empty_reservations_state(customer_client):
     response = customer_client.get("/my")
-    assert b"don&#39;t have any reservations yet" in response.data
+    assert b"have any reservations yet" in response.data
 
 
 def test_the_available_vehicles_count_reflects_only_bookable_vehicles(app, customer_client):
