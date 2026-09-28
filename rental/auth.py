@@ -1,4 +1,4 @@
-"""Sign-up, login, logout, guest access and the decorators that guard every other page."""
+"""Sign-up, login, logout, and the decorators that guard every other page."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from flask import (
     Blueprint,
     abort,
     flash,
+    g,
     redirect,
     render_template,
     request,
@@ -23,57 +24,54 @@ from .models import User
 bp = Blueprint("auth", __name__)
 
 
+def current_user() -> User | None:
+    """Return the signed-in User, or None. Loaded once per request and cached on g.
+
+    The role is read off the row rather than stored in the cookie, so an admin
+    who is demoted loses access on their next request rather than at their next
+    login.
+    """
+    if "current_user" not in g:
+        user_id = session.get("user_id")
+        g.current_user = get_session().get(User, user_id) if user_id else None
+    return g.current_user
+
+
 def current_role() -> str | None:
-    """Return "user" for a signed-in account, "guest" for a read-only visitor, None otherwise.
-
-    The role is worked out from what is already in the session rather than
-    stored as a third key, so a session created before guest access existed
-    still reports the right role.
-    """
-    if session.get("user_id"):
-        return "user"
-    if session.get("guest"):
-        return "guest"
-    return None
+    """Return "admin", "customer", or None when nobody is signed in."""
+    user = current_user()
+    return user.role if user else None
 
 
-def viewer_required(view):
-    """Allow signed-in users and guests through; send anonymous visitors to the login page.
-
-    Wraps a route function. This is the guard for every read-only page. When
-    there is no session at all the request is bounced to the login page,
-    remembering where the visitor was headed so they land there afterwards.
-    """
+def _require(view, predicate):
+    """Shared body for the three decorators: redirect anonymous, 403 the wrong role."""
 
     @wraps(view)
     def wrapped_view(*args, **kwargs):
-        if current_role() is None:
+        user = current_user()
+        if user is None:
             flash("Please log in to continue.", "warning")
             return redirect(url_for("auth.login", next=request.path))
-        return view(*args, **kwargs)
-
-    return wrapped_view
-
-
-def editor_required(view):
-    """Allow only signed-in users through; a guest gets a 403.
-
-    This is the guard for every page that changes data. A guest is refused
-    outright rather than redirected, because they already have a session and
-    bouncing them to a login form they did not ask for would be confusing.
-    """
-
-    @wraps(view)
-    def wrapped_view(*args, **kwargs):
-        role = current_role()
-        if role is None:
-            flash("Please log in to continue.", "warning")
-            return redirect(url_for("auth.login", next=request.path))
-        if role != "user":
+        if not predicate(user):
             abort(403)
         return view(*args, **kwargs)
 
     return wrapped_view
+
+
+def login_required(view):
+    """Any signed-in account. Anonymous visitors go to the login page."""
+    return _require(view, lambda user: True)
+
+
+def admin_required(view):
+    """Admins only. A customer gets a 403."""
+    return _require(view, lambda user: user.role == "admin")
+
+
+def customer_required(view):
+    """Customers only. An admin gets a 403, because these pages show 'your' rows."""
+    return _require(view, lambda user: user.role == "customer")
 
 
 def find_user_by_username(username: str) -> User | None:
@@ -88,6 +86,27 @@ def find_user_by_email(email: str) -> User | None:
     return db.scalars(select(User).where(User.email == email)).first()
 
 
+def home_for(user: User) -> str:
+    """Where a freshly signed-in person belongs after signing in.
+
+    Both roles land on the same page for now. Task 11 splits this into the
+    admin console and the customer portal, once those blueprints exist. It is
+    deliberately a function so that change is one line in one place.
+    """
+    return url_for("vehicles.dashboard")
+
+
+def safe_next_page(target: str | None, user: User) -> str:
+    """Return a safe redirect target, ignoring anything pointing off this site.
+
+    Only paths beginning with a single ``/`` are accepted, which blocks
+    ``//evil.com`` and full URLs from being used as an open redirect.
+    """
+    if target and target.startswith("/") and not target.startswith("//"):
+        return target
+    return home_for(user)
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     """Show the login form and sign the user in when the credentials are correct.
@@ -98,17 +117,22 @@ def login():
     On success the user's id is stored in the signed session cookie.
     """
     if session.get("user_id"):
-        return redirect(url_for("vehicles.dashboard"))
+        user = current_user()
+        if user is not None:
+            return redirect(home_for(user))
 
     form = LoginForm()
     if form.validate_on_submit():
         user = find_user_by_username(form.username.data.strip())
         if user is not None and user.check_password(form.password.data):
+            if not user.is_active:
+                flash("That account has been disabled. Please contact the office.", "error")
+                return render_template("login.html", form=form)
             session.clear()
             session["user_id"] = user.id
             session["username"] = user.username
             flash("Signed in successfully.", "success")
-            return redirect(safe_next_page(request.args.get("next")))
+            return redirect(safe_next_page(request.args.get("next"), user))
         flash("Invalid username or password.", "error")
 
     return render_template("login.html", form=form)
@@ -121,10 +145,12 @@ def signup():
     There is no email confirmation step: the address is only stored so an
     account can be identified later. Username and email are both unique, and
     each clash is reported on its own field so the visitor knows which to
-    change. A new account is signed in straight away.
+    change. A new account is signed in straight away, as a customer.
     """
     if session.get("user_id"):
-        return redirect(url_for("vehicles.dashboard"))
+        user = current_user()
+        if user is not None:
+            return redirect(home_for(user))
 
     form = SignupForm()
     if form.validate_on_submit():
@@ -138,7 +164,9 @@ def signup():
 
         if not form.errors:
             db = get_session()
-            user = User(username=username, email=email)
+            user = User(username=username, email=email, role="customer")
+            user.full_name = form.full_name.data
+            user.phone = form.phone.data
             user.set_password(form.password.data)
             db.add(user)
             db.commit()
@@ -147,45 +175,15 @@ def signup():
             session["user_id"] = user.id
             session["username"] = user.username
             flash(f"Welcome, {user.username}! Your account is ready.", "success")
-            return redirect(url_for("vehicles.dashboard"))
+            return redirect(home_for(user))
 
     return render_template("signup.html", form=form)
 
 
-@bp.route("/guest", methods=["POST"])
-def guest():
-    """Start a read-only session with no account behind it.
-
-    Nothing is written to the database: the guest is simply a session that has
-    no ``user_id``, which every ``editor_required`` route refuses. POST rather
-    than GET because it changes the session, so a link or a crawler cannot put
-    a signed-in user into guest mode.
-    """
-    session.clear()
-    session["guest"] = True
-    flash("You are browsing in read-only mode.", "info")
-    return redirect(url_for("vehicles.dashboard"))
-
-
 @bp.route("/logout", methods=["POST"])
+@login_required
 def logout():
-    """Clear the session and send the visitor back to the login page.
-
-    Used both by the Log out button and by the guest's Exit guest button, since
-    ending either kind of session means the same thing: throw it away.
-    """
-    was_guest = current_role() == "guest"
+    """Clear the session and send the visitor back to the login page."""
     session.clear()
-    flash("You have left guest mode." if was_guest else "You have been logged out.", "success")
+    flash("You have been logged out.", "success")
     return redirect(url_for("auth.login"))
-
-
-def safe_next_page(target: str | None) -> str:
-    """Return a safe redirect target, ignoring anything pointing off this site.
-
-    Only paths beginning with a single ``/`` are accepted, which blocks
-    ``//evil.com`` and full URLs from being used as an open redirect.
-    """
-    if target and target.startswith("/") and not target.startswith("//"):
-        return target
-    return url_for("vehicles.dashboard")

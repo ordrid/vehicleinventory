@@ -104,6 +104,12 @@ class SignupForm(FlaskForm):
             EqualTo("password", message="The two passwords do not match."),
         ],
     )
+    full_name = StringField(
+        "Full name", filters=[clean_text], validators=[Optional(), Length(max=120)]
+    )
+    phone = StringField(
+        "Phone", filters=[clean_text], validators=[Optional(), Length(max=30)]
+    )
     submit = SubmitField("Create account")
 
 

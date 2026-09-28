@@ -37,17 +37,26 @@ class Base(DeclarativeBase):
     """Base class every model inherits from."""
 
 
+ROLES = ["admin", "customer"]
+
+
 class User(Base):
-    """A person who can log in and manage the inventory."""
+    """A person who can log in: either the admin running the fleet or a customer renting from it."""
 
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
-    # Nullable because the first accounts were created by `flask create-admin`
-    # before sign-up existed; every account made through the form has one.
-    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="customer")
+    full_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Set by the forgot-password page. An admin services it by issuing a
+    # temporary password; there is no email sending in this project.
+    reset_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
     def set_password(self, password: str) -> None:
@@ -57,6 +66,15 @@ class User(Base):
     def check_password(self, password: str) -> bool:
         """Return True when the plain-text password matches the stored hash."""
         return check_password_hash(self.password_hash, password)
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"
+
+    @property
+    def display_name(self) -> str:
+        """The name to greet this person by, falling back to their username."""
+        return self.full_name or self.username
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"

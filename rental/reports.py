@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, Response, render_template
 from sqlalchemy import extract, func, select
 
-from .auth import viewer_required
+from .auth import admin_required
 from .db import get_session
 from .models import VEHICLE_STATUSES, VEHICLE_TYPES, Vehicle
 
@@ -63,7 +63,7 @@ def count_by_year_acquired() -> list[tuple[str, int]]:
 
 
 @bp.route("/reports")
-@viewer_required
+@admin_required
 def reports():
     """Show the three summary tables: by status, by vehicle type and by year acquired."""
     db = get_session()
@@ -88,7 +88,7 @@ def reports():
 
 
 @bp.route("/reports/export.csv")
-@viewer_required
+@admin_required
 def export_csv():
     """Download every vehicle as a CSV file, built with the standard library csv module.
 

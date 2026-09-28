@@ -5,12 +5,18 @@ from __future__ import annotations
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, session, url_for
+from flask import Flask, flash, redirect, render_template, url_for
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
 from . import auth, cli, db, reports, vehicles
 from .forms import max_year
-from .models import STATUS_BADGES, VEHICLE_STATUSES, VEHICLE_TYPES
+from .models import (
+    FUEL_TYPES,
+    STATUS_BADGES,
+    TRANSMISSIONS,
+    VEHICLE_STATUSES,
+    VEHICLE_TYPES,
+)
 
 # Load .env for local development. On Vercel the variables are already in the
 # environment, and load_dotenv simply finds no file and does nothing.
@@ -49,18 +55,23 @@ def register_template_globals(app: Flask) -> None:
 
     @app.context_processor
     def inject_globals():
-        role = auth.current_role()
+        user = auth.current_user()
+        role = user.role if user else None
         return {
+            # "STATUSES" is kept alongside "VEHICLE_STATUSES" because
+            # search.html still reads the old name; Task 9 reorganises the
+            # templates and can drop the alias then.
             "STATUSES": VEHICLE_STATUSES,
+            "VEHICLE_STATUSES": VEHICLE_STATUSES,
             "VEHICLE_TYPES": VEHICLE_TYPES,
+            "TRANSMISSIONS": TRANSMISSIONS,
+            "FUEL_TYPES": FUEL_TYPES,
             "STATUS_BADGES": STATUS_BADGES,
-            "current_username": session.get("username"),
-            # Templates use these to decide which chrome and which actions to
-            # render. `is_editor` is the one that hides Add / Edit / Delete;
-            # `is_guest` drives the read-only banner and the sidebar footer.
+            "current_user": user,
+            "current_username": user.username if user else None,
             "current_role": role,
-            "is_guest": role == "guest",
-            "is_editor": role == "user",
+            "is_admin": role == "admin",
+            "is_customer": role == "customer",
             "max_year": max_year(),
         }
 
@@ -73,19 +84,20 @@ def register_error_handlers(app: Flask) -> None:
         """Handle an expired or missing CSRF token with a message instead of a bare 400.
 
         This happens when a page has been left open long enough for the session
-        cookie to expire. Sending the visitor back to the dashboard (which
-        bounces to the login page when they are signed out) is friendlier than
-        Flask-WTF's default error page.
+        cookie to expire. Sending the visitor to the login page -- which is a
+        target that exists for everyone -- is friendlier than Flask-WTF's
+        default error page. Task 11 changes this to the public landing page
+        once that blueprint exists.
         """
         flash("Your session expired. Please try that again.", "warning")
-        return redirect(url_for("vehicles.dashboard"))
+        return redirect(url_for("auth.login"))
 
     @app.errorhandler(403)
     def forbidden(error):
-        """Explain that this page needs an account, instead of Flask's bare 403.
+        """Explain that this page belongs to a different kind of account.
 
-        Reached when a guest asks for a page that changes data, either by
-        typing the URL or by following a stale link.
+        Reached when a signed-in account asks for a page its role does not
+        cover, either by typing the URL or by following a stale link.
         """
         return render_template("403.html"), 403
 

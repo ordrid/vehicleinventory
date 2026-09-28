@@ -22,18 +22,32 @@ TEST_CONFIG = {
     "WTF_CSRF_ENABLED": False,
 }
 
+ADMIN_PASSWORD = "secret123"
+CUSTOMER_PASSWORD = "secret123"
+
 
 @pytest.fixture
 def app():
-    """Build an app backed by an empty in-memory database with one known user."""
+    """An app on an empty in-memory database holding one admin and one customer."""
     app = create_app(TEST_CONFIG)
 
     with app.app_context():
         Base.metadata.create_all(get_engine())
         db = get_session()
-        user = User(username="admin")
-        user.set_password("secret123")
-        db.add(user)
+
+        admin = User(username="admin", email="admin@example.com", role="admin")
+        admin.set_password(ADMIN_PASSWORD)
+
+        customer = User(
+            username="maria",
+            email="maria@example.com",
+            role="customer",
+            full_name="Maria Santos",
+            phone="0917 000 0001",
+        )
+        customer.set_password(CUSTOMER_PASSWORD)
+
+        db.add_all([admin, customer])
         db.commit()
 
     yield app
@@ -41,29 +55,29 @@ def app():
 
 @pytest.fixture
 def client(app):
-    """A test client that is not logged in."""
+    """A test client with no session at all."""
     return app.test_client()
 
 
 @pytest.fixture
-def auth_client(app):
-    """A test client that has already logged in as 'admin'."""
+def admin_client(app):
+    """A test client signed in as the admin."""
     client = app.test_client()
-    client.post("/login", data={"username": "admin", "password": "secret123"})
+    client.post("/login", data={"username": "admin", "password": ADMIN_PASSWORD})
     return client
 
 
 @pytest.fixture
-def guest_client(app):
-    """A test client browsing in read-only guest mode."""
+def customer_client(app):
+    """A test client signed in as the customer."""
     client = app.test_client()
-    client.post("/guest")
+    client.post("/login", data={"username": "maria", "password": CUSTOMER_PASSWORD})
     return client
 
 
 @pytest.fixture
 def sample_vehicle(app):
-    """Insert one vehicle and return its id."""
+    """Insert one bookable vehicle and return its id."""
     with app.app_context():
         db = get_session()
         vehicle = Vehicle(
