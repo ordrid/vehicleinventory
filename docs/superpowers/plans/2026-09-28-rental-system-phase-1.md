@@ -1152,8 +1152,13 @@ Add the role-aware home and rewrite `safe_next_page`:
 
 ```python
 def home_for(user: User) -> str:
-    """Where a freshly signed-in person belongs: their console or their portal."""
-    return url_for("admin_dashboard.dashboard") if user.is_admin else url_for("portal.dashboard")
+    """Where a freshly signed-in person belongs after signing in.
+
+    Both roles land on the same page for now. Task 11 splits this into the
+    admin console and the customer portal, once those blueprints exist. It is
+    deliberately a function so that change is one line in one place.
+    """
+    return url_for("vehicles.dashboard")
 
 
 def safe_next_page(target: str | None, user: User) -> str:
@@ -1190,7 +1195,12 @@ In `login()`, refuse disabled accounts and use the new helpers:
         flash("Invalid username or password.", "error")
 ```
 
-In `signup()`, create customers and redirect to the portal: `user = User(username=username, email=email, role="customer")`, then `user.full_name = form.full_name.data`, `user.phone = form.phone.data`, and `return redirect(url_for("portal.dashboard"))`.
+In `signup()`, create a customer: `user = User(username=username, email=email, role="customer")`, then `user.full_name = form.full_name.data` and `user.phone = form.phone.data`, and finish with `return redirect(home_for(user))`.
+
+**Do not write `url_for("portal.dashboard")` here.** That endpoint does not exist
+until Task 11, and `url_for` on an unregistered endpoint raises `BuildError` —
+so every sign-up and every sign-in would answer 500, including inside the test
+fixtures that log in. Route through `home_for()`, which Task 11 updates once.
 
 `SignupForm` in `rental/forms.py` gains the two optional fields:
 
@@ -2463,6 +2473,19 @@ from .admin import rates as admin_rates
 ```
 
 Change the CSRF error handler's redirect target to `url_for("public.landing")` — reachable by everyone, including a visitor whose session has just expired.
+
+Now that both destinations exist, split `home_for()` in `rental/auth.py` so each
+role lands in its own place. Task 6 deliberately left it pointing at a single
+endpoint because these blueprints were not registered yet:
+
+```python
+def home_for(user: User) -> str:
+    """Where a freshly signed-in person belongs: their console or their portal."""
+    return url_for("admin_dashboard.dashboard") if user.is_admin else url_for("portal.dashboard")
+```
+
+After this change, sign in as each role and confirm the landing page differs;
+`tests/test_auth.py`'s login-redirect assertions cover it.
 
 `rental/reports.py` moves under the admin console: give its blueprint `url_prefix="/admin/reports"`, change its routes to `@bp.route("")` and `@bp.route("/export.csv")`, and guard both with `@admin_required`.
 
