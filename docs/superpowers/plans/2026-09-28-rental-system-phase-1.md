@@ -3552,6 +3552,32 @@ Expected: FAIL — the placeholder template renders no form.
 </p>
 ```
 
+- [ ] **Step 3b: Strengthen a weak test you are sitting next to**
+
+While you are in `tests/test_fleet.py`, fix `test_a_negative_rate_is_refused`.
+As written it asserts only that an error message appeared in the response, which
+proves the message and not the outcome — a regression that rendered the error
+while still writing the row would pass it. Its sibling
+`test_adding_a_vehicle_without_a_rate_is_refused` at least checks the status
+code; this one checks neither that nor the database.
+
+```python
+def test_a_negative_rate_is_refused(app, admin_client):
+    response = admin_client.post("/admin/vehicles/add", data=dict(NEW_VEHICLE, daily_rate="-50"))
+    assert response.status_code == 200
+    assert b"cannot be negative" in response.data
+
+    # The message is not the point -- the point is that nothing was written.
+    from sqlalchemy import select
+
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    with app.app_context():
+        plate = NEW_VEHICLE["plate_number"].strip().upper()
+        assert get_session().scalars(select(Vehicle).where(Vehicle.plate_number == plate)).first() is None
+```
+
 - [ ] **Step 4: Run the tests**
 
 Run: `uv run pytest tests/test_fleet.py -q`
@@ -3615,6 +3641,46 @@ grep -rn 'plate, make\|plate number, make\|by plate, make' --include='*.html' re
 ```
 
 Expected: no output.
+
+- [ ] **Step 1c: Clear two pieces of dead scaffolding**
+
+Both were left deliberately by earlier tasks because the files were outside
+their scope. This task touches everything, so they land here.
+
+**The dead `STATUSES` alias.** `rental/__init__.py`'s context processor exposes
+both `STATUSES` and `VEHICLE_STATUSES` pointing at the same constant. Task 6 kept
+the alias because `admin/search.html` still read the old name; Task 15 switched
+that template to `VEHICLE_STATUSES`, so nothing consumes the alias now. Confirm
+and remove it:
+
+```bash
+grep -rn 'STATUSES' rental/templates/
+```
+
+Every hit should say `VEHICLE_STATUSES`. If so, delete the `"STATUSES"` key from
+`inject_globals` and the stale comment beside it — the comment still points at
+Task 9, which has long since passed without removing it.
+
+**The DISABLED pill shares a colour with MAINTENANCE.** Both render `pill-slate`,
+so a vehicle that is under maintenance *and* disabled shows two adjacent grey
+pills distinguished only by their text. Give the disabled marker `pill-red`
+instead, in both places it appears:
+
+- `partials/_vehicle_table.html` — the status cell
+- `rental/templates/admin/vehicle_detail.html` — beside the status pill
+
+`pill-red` already exists in `input.css` and is already listed in the
+`@source inline(...)` directive, so no CSS change and no new class are needed.
+Red reads correctly here: MAINTENANCE is a temporary state the vehicle will come
+back from, while disabled is a deliberate removal from service.
+
+Verify afterwards:
+
+```bash
+grep -rn 'DISABLED' rental/templates/
+```
+
+Expected: both hits carry `pill-red`.
 
 - [ ] **Step 2: Rewrite the login page**
 
