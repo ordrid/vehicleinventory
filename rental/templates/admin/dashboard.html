@@ -1,66 +1,84 @@
 {% extends 'layout_admin.html' %}
 {% from 'partials/_icons.html' import icon %}
-{% block title %}Dashboard &middot; Vehicle Inventory{% endblock %}
+{% block title %}Dashboard &middot; Vehicle Rental{% endblock %}
 
 {% block content %}
 <div class="mb-6">
-  <p class="text-[11px] font-bold uppercase tracking-widest text-muted">Rental Management Dashboard</p>
-  <h1 class="page-title">{% if current_username %}Welcome back, {{ current_username }}{% else %}Fleet overview{% endif %}</h1>
-  <p class="mt-1 text-sm text-muted">Here is how the fleet looks right now.</p>
+  <h1 class="page-title">Rental Management Dashboard</h1>
+  <p class="mt-1 text-sm text-muted">Online reservation + vehicle availability + automatic rental calculation</p>
 </div>
 
-{# The total gets its own banner; the four statuses then fill one clean row.
-   Each icon colour matches the status pill used in the tables. #}
-<div class="card mb-4 flex items-center gap-5 p-6">
-  <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white">
-    {{ icon('car', 'h-7 w-7') }}
-  </span>
-  <div>
-    <p class="text-sm font-medium text-muted">All Vehicles</p>
-    <p class="text-4xl font-extrabold leading-tight tracking-tight text-ink">{{ total }}</p>
+{# ---- Fleet row: what the fleet is made of right now ------------------- #}
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+  <div class="stat-card">
+    <p class="stat-label">Total Vehicles</p>
+    <p class="stat-value">{{ total }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Available</p>
+    <p class="stat-value">{{ counts['AVAILABLE'] }}</p>
+    <span class="pill {{ STATUS_BADGES['AVAILABLE'] }} mt-2">AVAILABLE</span>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Reserved</p>
+    <p class="stat-value">{{ counts['RESERVED'] }}</p>
+    <span class="pill {{ STATUS_BADGES['RESERVED'] }} mt-2">RESERVED</span>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Currently Rented</p>
+    <p class="stat-value">{{ counts['RENTED'] }}</p>
+    <span class="pill {{ STATUS_BADGES['RENTED'] }} mt-2">RENTED</span>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Under Maintenance</p>
+    <p class="stat-value">{{ counts['MAINTENANCE'] }}</p>
+    <span class="pill {{ STATUS_BADGES['MAINTENANCE'] }} mt-2">MAINTENANCE</span>
   </div>
 </div>
 
-{% set tiles = [
-  ('AVAILABLE',  counts['AVAILABLE'],  'check',  'bg-emerald-500'),
-  ('RESERVED',   counts['RESERVED'],   'car',    'bg-amber-500'),
-  ('RENTED',     counts['RENTED'],     'car',    'bg-sky-500'),
-  ('MAINTENANCE', counts['MAINTENANCE'], 'wrench', 'bg-slate-500')
-] %}
-
-<div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-  {% for label, value, name, tint in tiles %}
-    <div class="card flex items-center gap-4 p-5">
-      <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl {{ tint }} text-white">
-        {{ icon(name, 'h-6 w-6') }}
-      </span>
-      <div class="min-w-0">
-        <p class="truncate text-sm font-medium text-muted">{{ label }}</p>
-        <p class="text-2xl font-bold tracking-tight text-ink">{{ value }}</p>
-      </div>
-    </div>
-  {% endfor %}
+{# ---- Operations row: today's bookings and revenue --------------------- #}
+<div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="stat-card">
+    <p class="stat-label">Pending Reservations</p>
+    <p class="stat-value">{{ pending }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Today's Pickups</p>
+    <p class="stat-value">{{ pickups_today }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Today's Returns</p>
+    <p class="stat-value">{{ returns_today }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Total Rental Revenue</p>
+    <p class="stat-value">₱{{ '{:,.2f}'.format(revenue) }}</p>
+  </div>
 </div>
+<p class="mt-3 text-xs text-muted">
+  Reservation and rental figures start reporting as soon as the first booking is made.
+</p>
 
-<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Quick actions</h2>
-<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+{# ---- Quick actions ------------------------------------------------------ #}
+<h2 class="mb-3 mt-8 text-sm font-semibold uppercase tracking-wider text-muted">Quick actions</h2>
+<div class="card grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
   {% set actions = [
-    ('admin_fleet.list_vehicles', 'View Vehicles', 'Browse the full list, sorted and paginated.', 'car'),
-    ('admin_fleet.add_vehicle',   'Add Vehicle',   'Register a new vehicle in the inventory.',    'plus'),
-    ('admin_fleet.search',        'Search',        'Find a vehicle by plate, make or model.',     'search'),
-    ('reports.reports',        'Reports',       'Summaries, printing and CSV export.',         'report')
+    ('admin_fleet.add_vehicle',   'Add Vehicle',   'Register a new vehicle in the fleet.',      'plus'),
+    ('admin_fleet.list_vehicles', 'Vehicles',      'Browse the full fleet, sorted and paginated.', 'car'),
+    ('admin_rates.rates',         'Rental Rates',  'Review and adjust daily rental rates.',     'money'),
+    ('reports.reports',           'Fleet Reports', 'Summaries, printing and CSV export.',       'report')
   ] %}
   {% for endpoint, title, description, name in actions %}
     <a href="{{ url_for(endpoint) }}"
-       class="card group flex flex-col gap-3 p-5 transition hover:border-brand-500/40 hover:shadow-md">
+       class="btn-ghost group flex flex-col items-start gap-3 rounded-lg p-4 text-left transition hover:border-brand-500/40 hover:bg-brand-500/10">
       <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600
                    transition group-hover:bg-brand-500 group-hover:text-white">
         {{ icon(name) }}
       </span>
-      <div>
-        <p class="font-semibold text-ink">{{ title }}</p>
-        <p class="mt-0.5 text-sm leading-relaxed text-muted">{{ description }}</p>
-      </div>
+      <span>
+        <span class="block font-semibold text-ink">{{ title }}</span>
+        <span class="mt-0.5 block text-sm leading-relaxed text-muted">{{ description }}</span>
+      </span>
     </a>
   {% endfor %}
 </div>

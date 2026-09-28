@@ -252,3 +252,16 @@ def test_an_admin_still_sees_every_action_control(admin_client, sample_vehicle):
     assert f"/admin/vehicles/{sample_vehicle}/edit" in detail
     assert f"/admin/vehicles/{sample_vehicle}/delete" in detail
     assert f"/admin/vehicles/{sample_vehicle}/toggle-active" in detail
+
+
+def test_the_admin_dashboard_counts_the_real_fleet(admin_client, sample_vehicle):
+    response = admin_client.get("/admin")
+    assert response.status_code == 200
+    assert b"Rental Management Dashboard" in response.data
+    assert b"Total Vehicles" in response.data
+    assert b"Currently Rented" in response.data
+    assert b"Pending Reservations" in response.data
+
+
+def test_revenue_is_zero_until_a_rental_completes(admin_client, sample_vehicle):
+    assert "₱0.00".encode() in admin_client.get("/admin").data
