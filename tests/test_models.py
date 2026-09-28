@@ -33,3 +33,31 @@ def test_type_slug_picks_the_silhouette_filename():
 def test_daily_only_vehicle_has_no_hourly_rate():
     vehicle = Vehicle(daily_rate=Decimal("1500.00"))
     assert vehicle.hourly_rate is None
+
+
+def test_rental_rates_current_creates_the_single_row(app):
+    from rental.db import get_session
+    from rental.models import RentalRates
+
+    with app.app_context():
+        db = get_session()
+        rates = RentalRates.current(db)
+        assert rates.id == 1
+        assert rates.additional_driver_fee_per_day == Decimal("500.00")
+        assert rates.insurance_fee_per_day == Decimal("300.00")
+        assert rates.late_fee_per_day == Decimal("800.00")
+
+
+def test_rental_rates_current_reuses_the_row_and_keeps_edits(app):
+    from rental.db import get_session
+    from rental.models import RentalRates
+
+    with app.app_context():
+        db = get_session()
+        RentalRates.current(db).insurance_fee_per_day = Decimal("350.00")
+        db.commit()
+
+        again = RentalRates.current(db)
+        assert again.id == 1
+        assert again.insurance_fee_per_day == Decimal("350.00")
+        assert db.query(RentalRates).count() == 1

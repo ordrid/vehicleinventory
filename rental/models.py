@@ -111,3 +111,45 @@ class Vehicle(Base):
 
     def __repr__(self) -> str:
         return f"<Vehicle {self.plate_number} {self.brand} {self.model}>"
+
+
+# The fees a rental can attract, on top of the vehicle's own daily rate. These
+# live in the database rather than in the templates so an admin can change them
+# (requirement 21) without a deploy.
+DEFAULT_ADDITIONAL_DRIVER_FEE = Decimal("500.00")
+DEFAULT_INSURANCE_FEE = Decimal("300.00")
+DEFAULT_LATE_FEE = Decimal("800.00")
+
+
+class RentalRates(Base):
+    """The system-wide fee schedule. Exactly one row, id 1."""
+
+    __tablename__ = "rental_rates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    additional_driver_fee_per_day: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=DEFAULT_ADDITIONAL_DRIVER_FEE
+    )
+    insurance_fee_per_day: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=DEFAULT_INSURANCE_FEE
+    )
+    late_fee_per_day: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=DEFAULT_LATE_FEE
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+    @classmethod
+    def current(cls, session) -> "RentalRates":
+        """Return the one rates row, creating it with the defaults if it is missing.
+
+        Every caller gets a row, so no page has to handle the table being empty
+        -- which it is on a database created by ``init-db`` without a seed.
+        """
+        rates = session.get(cls, 1)
+        if rates is None:
+            rates = cls(id=1)
+            session.add(rates)
+            session.commit()
+        return rates
