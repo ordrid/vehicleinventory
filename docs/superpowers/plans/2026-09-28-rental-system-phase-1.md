@@ -2504,6 +2504,33 @@ retargeting the three at `/admin/vehicles`.
 Retarget Task 7's two forced-password-change tests at `/my` with
 `customer_client`, which is what they were always meant to exercise.
 
+While you are in `tests/test_auth.py`, strengthen
+`test_a_wrong_current_password_is_refused`. As written it asserts only that the
+error message appears, which proves the response but not the outcome — a
+refactor that moved `set_password` above the verification would still pass it.
+Make it assert the password did not change:
+
+```python
+def test_a_wrong_current_password_is_refused(app, customer_client):
+    response = customer_client.post(
+        "/change-password",
+        data={
+            "current_password": "wrong-password",
+            "password": "brandnew123",
+            "confirm_password": "brandnew123",
+        },
+    )
+    assert b"current password is not correct" in response.data
+
+    # The message is not the point -- the point is that nothing was written.
+    with app.app_context():
+        from rental.auth import find_user_by_username
+
+        user = find_user_by_username("maria")
+        assert user.check_password("secret123")
+        assert not user.check_password("brandnew123")
+```
+
 Run: `uv run pytest tests/test_roles.py tests/test_auth.py -q`
 Expected: PASS — every parametrised case.
 
