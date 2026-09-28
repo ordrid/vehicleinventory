@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
+from urllib.parse import urlparse
 
 import click
 from flask import Flask, current_app
@@ -196,7 +197,12 @@ def reset_db_command(yes: bool, password: str, demo_password: str):
     unless --yes is passed explicitly.
     """
     url = current_app.config["DATABASE_URL"]
-    if not url.startswith("sqlite") and not yes:
+    # Parse the scheme rather than prefix-matching the raw string: a URL such as
+    # "sqlite_evil://prodhost/db" starts with "sqlite" but is not SQLite, and
+    # this is the only thing standing between a mistyped DATABASE_URL and a
+    # dropped production database.
+    scheme = urlparse(url).scheme.split("+", 1)[0]
+    if scheme != "sqlite" and not yes:
         raise click.ClickException(
             f"Refusing to drop every table on {url.split('@')[-1]} without --yes."
         )

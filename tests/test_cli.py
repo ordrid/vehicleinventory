@@ -76,3 +76,22 @@ def test_reset_db_refuses_a_non_sqlite_database_without_yes(app):
     result = run(app, "reset-db", "--password", "adminpass1", "--demo-password", "demopass1")
     assert result.exit_code != 0
     assert "refusing" in result.output.lower()
+
+
+def test_reset_db_refuses_a_scheme_that_merely_starts_with_sqlite(app):
+    """A bare prefix check would let "sqlite_evil://" through.
+
+    Nothing should rely on create_engine() raising NoSuchModuleError to stop a
+    destructive command -- the guard has to refuse on its own.
+    """
+    app.config["DATABASE_URL"] = "sqlite_evil://realprodhost/db"
+    result = run(app, "reset-db", "--password", "adminpass1", "--demo-password", "demopass1")
+    assert result.exit_code != 0
+    assert "refusing" in result.output.lower()
+
+
+def test_reset_db_still_allows_a_driver_qualified_sqlite_url(app):
+    """SQLAlchemy URLs may carry a driver suffix; sqlite+pysqlite is still SQLite."""
+    app.config["DATABASE_URL"] = "sqlite+pysqlite://"
+    result = run(app, "reset-db", "--password", "adminpass1", "--demo-password", "demopass1")
+    assert result.exit_code == 0
