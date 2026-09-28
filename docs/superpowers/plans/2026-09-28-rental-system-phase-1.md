@@ -1992,19 +1992,24 @@ Take the sidebar and the mobile `<details>` drop-down out of the old `base.html`
   </a>
 {% endmacro %}
 
-{{ link('admin_dashboard.dashboard', 'Dashboard', 'dashboard') }}
+{{ link('vehicles.dashboard', 'Dashboard', 'dashboard') }}
 
 {{ section('Fleet Management') }}
-{{ link('admin_fleet.list_vehicles', 'Vehicles', 'car') }}
-{{ link('admin_fleet.add_vehicle', 'Add Vehicle', 'plus') }}
-{{ link('admin_fleet.search', 'Search Fleet', 'search') }}
-
-{{ section('Financial') }}
-{{ link('admin_rates.rates', 'Rental Rates', 'money') }}
+{{ link('vehicles.list_vehicles', 'Vehicles', 'car') }}
+{{ link('vehicles.add_vehicle', 'Add Vehicle', 'plus') }}
+{{ link('vehicles.search', 'Search Fleet', 'search') }}
 
 {{ section('Reports') }}
 {{ link('reports.reports', 'Fleet Reports', 'report') }}
 ```
+
+**These are deliberately the CURRENT endpoint names.** `admin_dashboard`,
+`admin_fleet` and `admin_rates` are not registered until Task 11, and `url_for`
+on an unregistered endpoint raises `BuildError`. Because every admin template
+extends `layout_admin.html`, which includes this partial, using the Task 11
+names here would break every admin page the moment this task landed. Task 11
+renames them in the same task that registers those blueprints, and adds the
+Financial / Rental Rates section then.
 
 Delete `partials/_nav_links.html` once nothing includes it.
 
@@ -2474,8 +2479,27 @@ from .admin import rates as admin_rates
 
 Change the CSRF error handler's redirect target to `url_for("public.landing")` — reachable by everyone, including a visitor whose session has just expired.
 
-Now that both destinations exist, split `home_for()` in `rental/auth.py` so each
-role lands in its own place. Task 6 deliberately left it pointing at a single
+Now that the blueprints are registered, update `partials/_admin_nav.html` to the
+new endpoint names. Task 9 deliberately left it pointing at the old ones, because
+`url_for` on an unregistered endpoint raises `BuildError` and every admin page
+extends the layout that includes this partial:
+
+```html
+{{ link('admin_dashboard.dashboard', 'Dashboard', 'dashboard') }}
+
+{{ section('Fleet Management') }}
+{{ link('admin_fleet.list_vehicles', 'Vehicles', 'car') }}
+{{ link('admin_fleet.add_vehicle', 'Add Vehicle', 'plus') }}
+{{ link('admin_fleet.search', 'Search Fleet', 'search') }}
+
+{{ section('Financial') }}
+{{ link('admin_rates.rates', 'Rental Rates', 'money') }}
+
+{{ section('Reports') }}
+{{ link('reports.reports', 'Fleet Reports', 'report') }}
+```
+
+Then split `home_for()` in `rental/auth.py` so each role lands in its own place. Task 6 deliberately left it pointing at a single
 endpoint because these blueprints were not registered yet:
 
 ```python
