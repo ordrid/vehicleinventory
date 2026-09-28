@@ -7,6 +7,7 @@ from datetime import date
 from flask_wtf import FlaskForm
 from wtforms import (
     DateField,
+    DecimalField,
     IntegerField,
     PasswordField,
     SelectField,
@@ -16,7 +17,7 @@ from wtforms import (
 )
 from wtforms.validators import DataRequired, EqualTo, Length, NumberRange, Optional, Regexp
 
-from .models import STATUSES, VEHICLE_TYPES
+from .models import FUEL_TYPES, TRANSMISSIONS, VEHICLE_STATUSES, VEHICLE_TYPES
 
 MIN_YEAR = 1950
 
@@ -133,8 +134,37 @@ class VehicleForm(FlaskForm):
     color = StringField("Color", filters=[clean_text], validators=[Optional(), Length(max=30)])
     status = SelectField(
         "Status",
-        choices=[(s, s) for s in STATUSES],
+        choices=[(s, s.title()) for s in VEHICLE_STATUSES],
         validators=[DataRequired()],
+    )
+    seats = IntegerField(
+        "Seats",
+        validators=[
+            DataRequired(message="Number of seats is required."),
+            NumberRange(min=1, max=30, message="Seats must be between 1 and 30."),
+        ],
+    )
+    transmission = SelectField(
+        "Transmission", choices=[(t, t) for t in TRANSMISSIONS], validators=[DataRequired()]
+    )
+    fuel_type = SelectField(
+        "Fuel type", choices=[(f, f) for f in FUEL_TYPES], validators=[DataRequired()]
+    )
+    daily_rate = DecimalField(
+        "Daily rate (PHP)",
+        places=2,
+        validators=[
+            DataRequired(message="Daily rate is required."),
+            NumberRange(min=0, message="Daily rate cannot be negative."),
+        ],
+    )
+    hourly_rate = DecimalField(
+        "Hourly rate (PHP)",
+        places=2,
+        validators=[Optional(), NumberRange(min=0, message="Hourly rate cannot be negative.")],
+    )
+    image_url = StringField(
+        "Image URL", filters=[clean_text], validators=[Optional(), Length(max=500)]
     )
     date_acquired = DateField("Date acquired", validators=[Optional()])
     description = TextAreaField("Description", filters=[clean_text], validators=[Optional()])

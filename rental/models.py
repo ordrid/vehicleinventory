@@ -3,22 +3,28 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
 
 # The fixed option lists used by the forms, the filters and the reports.
-VEHICLE_TYPES = ["Sedan", "SUV", "Pickup", "Van", "Truck", "Motorcycle"]
-STATUSES = ["Available", "In Use", "Under Maintenance", "Retired"]
+VEHICLE_TYPES = ["Sedan", "Hatchback", "MPV", "SUV", "Pickup", "Van", "Truck", "Motorcycle"]
+TRANSMISSIONS = ["Automatic", "Manual"]
+FUEL_TYPES = ["Gasoline", "Diesel", "Electric", "Hybrid"]
 
-# The status pill colour for each status. Kept deliberately far apart in hue
-# so the four states stay easy to tell apart, including in a printout.
+# A vehicle's state right now. Whether it can be booked for a particular date
+# range is computed from overlapping reservations, rentals and maintenance --
+# never read off this column. See the spec's "Vehicle status is not the same
+# thing as availability".
+VEHICLE_STATUSES = ["AVAILABLE", "RESERVED", "RENTED", "MAINTENANCE"]
+
 STATUS_BADGES = {
-    "Available": "pill-green",
-    "In Use": "pill-blue",
-    "Under Maintenance": "pill-amber",
-    "Retired": "pill-slate",
+    "AVAILABLE": "pill-green",
+    "RESERVED": "pill-amber",
+    "RENTED": "pill-blue",
+    "MAINTENANCE": "pill-slate",
 }
 
 
@@ -68,7 +74,19 @@ class Vehicle(Base):
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     vehicle_type: Mapped[str] = mapped_column(String(20), nullable=False)
     color: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="Available")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="AVAILABLE")
+    seats: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    transmission: Mapped[str] = mapped_column(String(20), nullable=False, default="Automatic")
+    fuel_type: Mapped[str] = mapped_column(String(20), nullable=False, default="Gasoline")
+    daily_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    # NULL means this vehicle is daily-only: a part day rounds up to a whole one.
+    hourly_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # An absolute URL or a path under static/. Blank falls back to the per-type
+    # silhouette, so a vehicle never renders a broken image.
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # False is what "Disable Vehicle" does: hidden from the storefront and
+    # unbookable, but its history is kept.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     date_acquired: Mapped[date | None] = mapped_column(Date, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
@@ -80,6 +98,16 @@ class Vehicle(Base):
     def badge_class(self) -> str:
         """Return the status pill colour class that matches this vehicle's status."""
         return STATUS_BADGES.get(self.status, "pill-slate")
+
+    @property
+    def display_name(self) -> str:
+        """The vehicle as a customer sees it named, e.g. 'Toyota Vios 2024'."""
+        return f"{self.brand} {self.model} {self.year}"
+
+    @property
+    def type_slug(self) -> str:
+        """The vehicle type lower-cased, which is the silhouette's filename."""
+        return (self.vehicle_type or "sedan").lower()
 
     def __repr__(self) -> str:
         return f"<Vehicle {self.plate_number} {self.brand} {self.model}>"

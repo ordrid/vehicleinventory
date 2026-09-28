@@ -11,7 +11,7 @@ from sqlalchemy import extract, func, select
 
 from .auth import viewer_required
 from .db import get_session
-from .models import STATUSES, VEHICLE_TYPES, Vehicle
+from .models import VEHICLE_STATUSES, VEHICLE_TYPES, Vehicle
 
 bp = Blueprint("reports", __name__)
 
@@ -74,7 +74,7 @@ def reports():
 
     # List every known status and type, including the ones with zero vehicles,
     # so the report has a stable shape from one run to the next.
-    by_status = [(status, by_status_raw.get(status, 0)) for status in STATUSES]
+    by_status = [(status, by_status_raw.get(status, 0)) for status in VEHICLE_STATUSES]
     by_type = [(t, by_type_raw.get(t, 0)) for t in VEHICLE_TYPES]
 
     return render_template(

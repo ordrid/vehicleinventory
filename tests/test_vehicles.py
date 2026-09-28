@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from rental.db import get_session
 from rental.models import Vehicle
 
@@ -12,7 +14,13 @@ NEW_VEHICLE = {
     "year": "2022",
     "vehicle_type": "Pickup",
     "color": "Grey",
-    "status": "Available",
+    "status": "AVAILABLE",
+    "seats": "5",
+    "transmission": "Automatic",
+    "fuel_type": "Gasoline",
+    "daily_rate": "1500.00",
+    "hourly_rate": "",
+    "image_url": "",
     "date_acquired": "2022-04-01",
     "description": "Bought new.",
 }
@@ -22,9 +30,9 @@ def test_dashboard_shows_totals(auth_client, sample_vehicle):
     response = auth_client.get("/")
     assert response.status_code == 200
     assert b"All Vehicles" in response.data
-    # One vehicle, and it is Available, so both those tiles must read 1.
+    # One vehicle, and it is AVAILABLE, so both those tiles must read 1.
     assert response.data.count(b">1</p>") == 2
-    assert b"Available" in response.data
+    assert b"AVAILABLE" in response.data
 
 
 def test_add_vehicle_saves_and_normalises_the_plate(app, auth_client):
@@ -69,7 +77,8 @@ def test_view_vehicles_paginates_at_ten_per_page(app, auth_client):
                     model="Vios",
                     year=2020,
                     vehicle_type="Sedan",
-                    status="Available",
+                    status="AVAILABLE",
+                    daily_rate=Decimal("1500.00"),
                 )
             )
         db.commit()
@@ -92,7 +101,8 @@ def test_view_vehicles_sorts_by_year(app, auth_client, sample_vehicle):
                 model="Civic",
                 year=1999,
                 vehicle_type="Sedan",
-                status="Retired",
+                status="MAINTENANCE",
+                daily_rate=Decimal("1200.00"),
             )
         )
         db.commit()
@@ -116,8 +126,8 @@ def test_search_with_no_match_says_so(auth_client, sample_vehicle):
 
 
 def test_search_filters_by_status_and_type(auth_client, sample_vehicle):
-    assert b"ABC 1234" in auth_client.get("/search?status=Available").data
-    assert b"ABC 1234" not in auth_client.get("/search?status=Retired").data
+    assert b"ABC 1234" in auth_client.get("/search?status=AVAILABLE").data
+    assert b"ABC 1234" not in auth_client.get("/search?status=MAINTENANCE").data
     assert b"ABC 1234" in auth_client.get("/search?type=Pickup").data
     assert b"ABC 1234" not in auth_client.get("/search?type=Sedan").data
 
@@ -127,7 +137,7 @@ def test_edit_vehicle_prefills_and_saves(app, auth_client, sample_vehicle):
     assert page.status_code == 200
     assert b"ABC 1234" in page.data
 
-    data = dict(NEW_VEHICLE, plate_number="ABC 1234", status="Under Maintenance", color="Blue")
+    data = dict(NEW_VEHICLE, plate_number="ABC 1234", status="MAINTENANCE", color="Blue")
     response = auth_client.post(
         f"/vehicles/{sample_vehicle}/edit", data=data, follow_redirects=True
     )
@@ -135,7 +145,7 @@ def test_edit_vehicle_prefills_and_saves(app, auth_client, sample_vehicle):
 
     with app.app_context():
         vehicle = get_session().get(Vehicle, sample_vehicle)
-        assert vehicle.status == "Under Maintenance"
+        assert vehicle.status == "MAINTENANCE"
         assert vehicle.color == "Blue"
 
 
@@ -149,7 +159,8 @@ def test_edit_vehicle_rejects_a_plate_used_by_another_vehicle(app, auth_client, 
                 model="Ranger",
                 year=2020,
                 vehicle_type="Pickup",
-                status="Available",
+                status="AVAILABLE",
+                daily_rate=Decimal("1800.00"),
             )
         )
         db.commit()

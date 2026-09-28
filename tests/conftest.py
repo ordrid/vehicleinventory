@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -72,7 +73,11 @@ def sample_vehicle(app):
             year=2021,
             vehicle_type="Pickup",
             color="White",
-            status="Available",
+            status="AVAILABLE",
+            seats=5,
+            transmission="Automatic",
+            fuel_type="Diesel",
+            daily_rate=Decimal("2200.00"),
             date_acquired=date(2021, 3, 15),
         )
         db.add(vehicle)

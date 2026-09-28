@@ -21,10 +21,10 @@
 </div>
 
 {% set tiles = [
-  ('Available',         counts['Available'],         'check',   'bg-emerald-500'),
-  ('In Use',            counts['In Use'],            'car',     'bg-sky-500'),
-  ('Under Maintenance', counts['Under Maintenance'], 'wrench',  'bg-amber-500'),
-  ('Retired',           counts['Retired'],           'archive', 'bg-slate-500')
+  ('AVAILABLE',  counts['AVAILABLE'],  'check',  'bg-emerald-500'),
+  ('RESERVED',   counts['RESERVED'],   'car',    'bg-amber-500'),
+  ('RENTED',     counts['RENTED'],     'car',    'bg-sky-500'),
+  ('MAINTENANCE', counts['MAINTENANCE'], 'wrench', 'bg-slate-500')
 ] %}
 
 <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

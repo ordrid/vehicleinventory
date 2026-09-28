@@ -10,7 +10,7 @@ from flask_wtf.csrf import CSRFError, CSRFProtect
 
 from . import auth, cli, db, reports, vehicles
 from .forms import max_year
-from .models import STATUS_BADGES, STATUSES, VEHICLE_TYPES
+from .models import STATUS_BADGES, VEHICLE_STATUSES, VEHICLE_TYPES
 
 # Load .env for local development. On Vercel the variables are already in the
 # environment, and load_dotenv simply finds no file and does nothing.
@@ -51,7 +51,7 @@ def register_template_globals(app: Flask) -> None:
     def inject_globals():
         role = auth.current_role()
         return {
-            "STATUSES": STATUSES,
+            "STATUSES": VEHICLE_STATUSES,
             "VEHICLE_TYPES": VEHICLE_TYPES,
             "STATUS_BADGES": STATUS_BADGES,
             "current_username": session.get("username"),

@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from .auth import editor_required, viewer_required
 from .db import get_session
 from .forms import DeleteForm, VehicleForm
-from .models import STATUSES, VEHICLE_TYPES, Vehicle
+from .models import VEHICLE_STATUSES, VEHICLE_TYPES, Vehicle
 
 bp = Blueprint("vehicles", __name__)
 
@@ -54,6 +54,12 @@ def copy_form_into_vehicle(form: VehicleForm, vehicle: Vehicle) -> None:
     vehicle.vehicle_type = form.vehicle_type.data
     vehicle.color = form.color.data
     vehicle.status = form.status.data
+    vehicle.seats = form.seats.data
+    vehicle.transmission = form.transmission.data
+    vehicle.fuel_type = form.fuel_type.data
+    vehicle.daily_rate = form.daily_rate.data
+    vehicle.hourly_rate = form.hourly_rate.data
+    vehicle.image_url = form.image_url.data
     vehicle.date_acquired = form.date_acquired.data
     vehicle.description = form.description.data
 
@@ -89,7 +95,7 @@ def dashboard():
     grouped = db.execute(
         select(Vehicle.status, func.count(Vehicle.id)).group_by(Vehicle.status)
     ).all()
-    counts = {status: 0 for status in STATUSES}
+    counts = {status: 0 for status in VEHICLE_STATUSES}
     for status, count in grouped:
         counts[status] = count
 
@@ -246,7 +252,7 @@ def search():
             | Vehicle.brand.ilike(pattern)
             | Vehicle.model.ilike(pattern)
         )
-    if status in STATUSES:
+    if status in VEHICLE_STATUSES:
         query = query.where(Vehicle.status == status)
     if vehicle_type in VEHICLE_TYPES:
         query = query.where(Vehicle.vehicle_type == vehicle_type)

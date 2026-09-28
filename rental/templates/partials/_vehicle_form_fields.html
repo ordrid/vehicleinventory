@@ -53,6 +53,43 @@
   </div>
 
   <div>
+    <label class="field-label" for="{{ form.seats.id }}">Seats <span class="text-red-500">*</span></label>
+    {{ form.seats(class="field" ~ invalid(form.seats), type="number", min=1, max=30, required=true) }}
+    {{ errors(form.seats) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.transmission.id }}">Transmission <span class="text-red-500">*</span></label>
+    {{ form.transmission(class="field" ~ invalid(form.transmission)) }}
+    {{ errors(form.transmission) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.fuel_type.id }}">Fuel type <span class="text-red-500">*</span></label>
+    {{ form.fuel_type(class="field" ~ invalid(form.fuel_type)) }}
+    {{ errors(form.fuel_type) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.daily_rate.id }}">Daily rate (PHP) <span class="text-red-500">*</span></label>
+    {{ form.daily_rate(class="field" ~ invalid(form.daily_rate), type="number", step="0.01", min=0, required=true) }}
+    {{ errors(form.daily_rate) }}
+  </div>
+
+  <div>
+    <label class="field-label" for="{{ form.hourly_rate.id }}">Hourly rate (PHP)</label>
+    {{ form.hourly_rate(class="field" ~ invalid(form.hourly_rate), type="number", step="0.01", min=0) }}
+    {{ errors(form.hourly_rate) }}
+    <p class="field-hint">Leave blank for a daily-only vehicle.</p>
+  </div>
+
+  <div class="sm:col-span-2">
+    <label class="field-label" for="{{ form.image_url.id }}">Image URL</label>
+    {{ form.image_url(class="field", placeholder="https://example.com/photo.jpg") }}
+    {{ errors(form.image_url) }}
+  </div>
+
+  <div>
     <label class="field-label" for="{{ form.date_acquired.id }}">Date acquired</label>
     {{ form.date_acquired(class="field", type="date") }}
     {{ errors(form.date_acquired) }}

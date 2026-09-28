@@ -36,6 +36,12 @@
       ('Year',         vehicle.year),
       ('Type',         vehicle.vehicle_type),
       ('Color',        vehicle.color),
+      ('Seats',        vehicle.seats),
+      ('Transmission', vehicle.transmission),
+      ('Fuel type',    vehicle.fuel_type),
+      ('Daily rate',   "₱" ~ '{:,.2f}'.format(vehicle.daily_rate)),
+      ('Hourly rate',  ("₱" ~ '{:,.2f}'.format(vehicle.hourly_rate)) if vehicle.hourly_rate is not none else None),
+      ('Image URL',    vehicle.image_url),
       ('Date acquired', vehicle.date_acquired.strftime('%d %b %Y') if vehicle.date_acquired else None)
     ] %}
     {% for label, value in fields %}
