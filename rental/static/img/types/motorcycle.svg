@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90" role="img" aria-label="Motorcycle">
+  <path fill="#cbd5e1" d="M58 44 66 26 86 24 96 30 100 44 90 44 80 50Z"/>
+  <path fill="#94a3b8" d="M58 44 52 54h6l6-8ZM64 26 74 18l3 4-9 6ZM100 44 110 54h6Z"/>
+  <circle cx="40" cy="54" r="15" fill="#94a3b8"/><circle cx="40" cy="54" r="6" fill="#f1f5f9"/>
+  <circle cx="120" cy="54" r="15" fill="#94a3b8"/><circle cx="120" cy="54" r="6" fill="#f1f5f9"/>
+</svg>
