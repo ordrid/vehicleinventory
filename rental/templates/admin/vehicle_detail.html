@@ -1,6 +1,6 @@
 {% extends 'layout_admin.html' %}
 {% from 'partials/_icons.html' import icon %}
-{% block title %}{{ vehicle.plate_number }} &middot; Vehicle Inventory{% endblock %}
+{% block title %}{{ vehicle.plate_number }} &middot; Vehicle Rental{% endblock %}
 
 {# The read-only view of one vehicle. This is the only page that shows the
    description and the acquisition date without opening the edit form. #}
@@ -39,7 +39,7 @@
     <h2 class="font-semibold text-ink">Details</h2>
     <div class="flex items-center gap-2">
       <span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span>
-      {% if not vehicle.is_active %}<span class="pill pill-slate">DISABLED</span>{% endif %}
+      {% if not vehicle.is_active %}<span class="pill pill-red">DISABLED</span>{% endif %}
     </div>
   </header>
 

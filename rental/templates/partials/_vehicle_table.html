@@ -44,7 +44,7 @@
               <td class="font-mono text-sm whitespace-nowrap">₱{{ '{:,.2f}'.format(vehicle.daily_rate) }}</td>
               <td>
                 <span class="pill {{ vehicle.badge_class }}">{{ vehicle.status }}</span>
-                {% if not vehicle.is_active %}<span class="pill pill-slate">DISABLED</span>{% endif %}
+                {% if not vehicle.is_active %}<span class="pill pill-red">DISABLED</span>{% endif %}
               </td>
               <td class="no-print">
                 {# View is for everyone; the two that change data are added

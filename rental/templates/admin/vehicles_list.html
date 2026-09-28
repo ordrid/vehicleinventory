@@ -2,14 +2,14 @@
 {% from 'partials/_vehicle_table.html' import vehicle_table with context %}
 {% from 'partials/_pagination.html' import pagination %}
 {% from 'partials/_icons.html' import icon %}
-{% block title %}Vehicles &middot; Vehicle Inventory{% endblock %}
+{% block title %}Vehicles &middot; Vehicle Rental{% endblock %}
 
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
   <div>
     <h1 class="page-title">Vehicles</h1>
     <p class="mt-1 text-sm text-muted">
-      {{ total }} vehicle{{ '' if total == 1 else 's' }} in the inventory
+      {{ total }} vehicle{{ '' if total == 1 else 's' }} in the fleet
     </p>
   </div>
   <div class="flex gap-2">

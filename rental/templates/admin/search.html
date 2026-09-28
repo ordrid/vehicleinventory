@@ -2,19 +2,19 @@
 {% from 'partials/_vehicle_table.html' import vehicle_table with context %}
 {% from 'partials/_pagination.html' import pagination %}
 {% from 'partials/_icons.html' import icon %}
-{% block title %}Search &middot; Vehicle Inventory{% endblock %}
+{% block title %}Search &middot; Vehicle Rental{% endblock %}
 
 {% block content %}
 <div class="mb-6">
   <h1 class="page-title">Search Vehicles</h1>
-  <p class="mt-1 text-sm text-muted">Match on plate number, make or model, then narrow by status or type.</p>
+  <p class="mt-1 text-sm text-muted">Match on plate number, brand or model, then narrow by status or type.</p>
 </div>
 
 {# A plain GET form, so a search can be bookmarked and shared as a URL. #}
 <form method="get" class="card mb-5 p-5">
   <div class="grid gap-4 lg:grid-cols-[2fr_1fr_1fr_auto]">
     <div>
-      <label class="field-label" for="q">Plate, make or model</label>
+      <label class="field-label" for="q">Plate, brand or model</label>
       <input class="field" type="search" id="q" name="q" value="{{ term }}"
              placeholder="e.g. ABC, Toyota, Hilux">
     </div>

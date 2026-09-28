@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'partials/_icons.html' import icon %}
 {% from 'partials/_flashes.html' import flashes with context %}
-{% block title %}Log in &middot; Vehicle Inventory{% endblock %}
+{% block title %}Log in &middot; Vehicle Rental{% endblock %}
 
 {# Full-bleed split: the form owns one half of the window, the photograph the
    other. Overrides `main` so it escapes the usual centred content column. #}
@@ -28,14 +28,10 @@
         <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500 text-white">
           {{ icon('car', 'h-6 w-6') }}
         </span>
-        <div class="leading-tight">
-          <p class="text-lg font-extrabold tracking-tight text-white">Vehicle Inventory</p>
-          <p class="text-xs font-medium text-slate-400">Management System</p>
-        </div>
       </div>
 
-      <h1 class="text-2xl font-bold text-white">Sign in</h1>
-      <p class="mt-1.5 text-sm text-slate-400">Enter your details to manage the fleet.</p>
+      <h1 class="text-2xl font-bold text-white">Vehicle Rental and Reservation System</h1>
+      <p class="mt-1.5 text-sm text-slate-400">Book your vehicle online with ease.</p>
 
       <div class="mt-6">{{ flashes() }}</div>
 
@@ -65,10 +61,14 @@
         {{ form.submit(class="btn btn-primary w-full !py-3") }}
       </form>
 
+      <div class="mt-3 space-y-2">
+        <a class="btn btn-ghost w-full" href="{{ url_for('auth.signup') }}">Create Account</a>
+        <a class="btn btn-ghost w-full" href="{{ url_for('public.browse') }}">Browse Vehicles</a>
+      </div>
+
       <p class="mt-6 text-center text-sm text-slate-400">
-        New here?
-        <a href="{{ url_for('auth.signup') }}"
-           class="font-semibold text-white underline decoration-brand-500 decoration-2 underline-offset-4 hover:text-slate-200">Create an account</a>
+        <a href="{{ url_for('auth.forgot_password') }}"
+           class="font-semibold text-white underline decoration-brand-500 decoration-2 underline-offset-4 hover:text-slate-200">Forgot password?</a>
       </p>
     </div>
   </div>
@@ -87,10 +87,10 @@
 
     <div class="absolute inset-x-0 bottom-0 p-12">
       <p class="text-3xl font-bold leading-tight tracking-tight text-white">
-        Every vehicle,<br>accounted for.
+        Book your ride,<br>drive today.
       </p>
       <p class="mt-3 max-w-sm text-sm leading-relaxed text-slate-300">
-        Track plates, status and maintenance across the whole fleet from one dashboard.
+        Browse the fleet, compare rates and reserve your next rental online.
       </p>
     </div>
   </div>

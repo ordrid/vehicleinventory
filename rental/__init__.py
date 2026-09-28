@@ -1,4 +1,4 @@
-"""Application factory for the Vehicle Inventory System."""
+"""Application factory for the Vehicle Rental and Reservation System."""
 
 from __future__ import annotations
 
@@ -82,10 +82,6 @@ def register_template_globals(app: Flask) -> None:
         user = auth.current_user()
         role = user.role if user else None
         return {
-            # "STATUSES" is kept alongside "VEHICLE_STATUSES" because
-            # search.html still reads the old name; Task 9 reorganises the
-            # templates and can drop the alias then.
-            "STATUSES": VEHICLE_STATUSES,
             "VEHICLE_STATUSES": VEHICLE_STATUSES,
             "VEHICLE_TYPES": VEHICLE_TYPES,
             "TRANSMISSIONS": TRANSMISSIONS,

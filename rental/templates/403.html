@@ -1,5 +1,5 @@
 {% extends 'layout_public.html' %}
-{% block title %}Not allowed &middot; Vehicle Inventory{% endblock %}
+{% block title %}Not allowed &middot; Vehicle Rental{% endblock %}
 
 {% block content %}
 <div class="flex min-h-[60vh] items-center justify-center">
@@ -7,7 +7,7 @@
     <p class="text-6xl font-extrabold tracking-tight text-slate-200">403</p>
     <h1 class="mt-3 text-xl font-bold text-ink">Not allowed</h1>
     <p class="mt-1.5 text-sm text-muted">
-      That page belongs to a different kind of account. Sign in with the right one to continue.
+      This page belongs to a different kind of account.
     </p>
     <div class="mt-6 flex flex-wrap justify-center gap-2">
       <a class="btn btn-ghost" href="{{ url_for('public.landing') }}">Home</a>

@@ -81,7 +81,7 @@ class User(Base):
 
 
 class Vehicle(Base):
-    """One vehicle in the inventory."""
+    """One vehicle in the fleet."""
 
     __tablename__ = "vehicles"
 
