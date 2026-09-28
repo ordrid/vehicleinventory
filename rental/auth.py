@@ -52,6 +52,10 @@ def _require(view, predicate):
         if user is None:
             flash("Please log in to continue.", "warning")
             return redirect(url_for("auth.login", next=request.path))
+        if not user.is_active:
+            session.clear()
+            flash("That account has been disabled. Please contact the office.", "warning")
+            return redirect(url_for("auth.login"))
         if not predicate(user):
             abort(403)
         return view(*args, **kwargs)

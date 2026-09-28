@@ -3712,7 +3712,7 @@ Rewrite **Data model** from the spec's schema tables — all six models. Rewrite
 
 ```bash
 uv sync
-uv run flask reset-db --yes --password 'choose-one' --demo-password 'choose-one'
+DATABASE_URL=sqlite:///rental.db uv run flask reset-db --password 'choose-one' --demo-password 'choose-one'
 uv run flask run
 ```
 

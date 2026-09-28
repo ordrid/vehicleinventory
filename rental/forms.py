@@ -168,7 +168,7 @@ class VehicleForm(FlaskForm):
         "Daily rate (PHP)",
         places=2,
         validators=[
-            DataRequired(message="Daily rate is required."),
+            InputRequired(message="Daily rate is required."),
             NumberRange(min=0, message="Daily rate cannot be negative."),
         ],
     )

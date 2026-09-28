@@ -221,6 +221,23 @@ def test_a_negative_rate_is_refused(app, admin_client):
         assert get_session().scalars(select(Vehicle).where(Vehicle.plate_number == plate)).first() is None
 
 
+def test_a_zero_daily_rate_is_accepted(app, admin_client):
+    """Zero is a legitimate rate; DataRequired would reject it as missing."""
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from rental.db import get_session
+    from rental.models import Vehicle
+
+    admin_client.post("/admin/vehicles/add", data=dict(NEW_VEHICLE, daily_rate="0"))
+
+    with app.app_context():
+        plate = NEW_VEHICLE["plate_number"].strip().upper()
+        vehicle = get_session().scalars(select(Vehicle).where(Vehicle.plate_number == plate)).one()
+        assert vehicle.daily_rate == Decimal("0.00")
+
+
 def test_the_rates_page_shows_the_current_fees(admin_client):
     response = admin_client.get("/admin/rates")
     assert response.status_code == 200

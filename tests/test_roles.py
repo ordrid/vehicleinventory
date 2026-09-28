@@ -11,7 +11,15 @@ from rental.db import get_session
 from rental.models import Vehicle
 
 PUBLIC_PAGES = ["/", "/vehicles"]
-ADMIN_PAGES = ["/admin", "/admin/vehicles", "/admin/vehicles/add", "/admin/rates"]
+ADMIN_PAGES = [
+    "/admin",
+    "/admin/vehicles",
+    "/admin/vehicles/add",
+    "/admin/vehicles/search",
+    "/admin/rates",
+    "/admin/reports",
+    "/admin/reports/export.csv",
+]
 CUSTOMER_PAGES = ["/my"]
 
 
@@ -86,6 +94,11 @@ def test_the_customer_dashboard_counts_are_real_and_start_at_zero(customer_clien
     assert b"My Reservations" in response.data
     assert b"Available Vehicles" in response.data
     assert b"Total Rentals" in response.data
+
+    html = response.get_data(as_text=True)
+    figures = [v.strip() for v in re.findall(r'stat-value[^>]*>([^<]+)<', html)]
+    # Available Vehicles, My Reservations, Active Rental, Total Rentals.
+    assert figures == ["1", "0", "0", "0"]
 
 
 def test_the_customer_dashboard_offers_a_way_into_the_storefront(customer_client):

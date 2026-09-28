@@ -188,3 +188,20 @@ def test_a_wrong_current_password_is_refused(app, customer_client):
         user = find_user_by_username("maria")
         assert user.check_password("secret123")
         assert not user.check_password("brandnew123")
+
+
+def test_disabling_an_account_ends_its_live_session(app, customer_client):
+    """A disabled account must lose access immediately, not at next login."""
+    from rental.auth import find_user_by_username
+    from rental.db import get_session
+
+    assert customer_client.get("/my").status_code == 200
+
+    with app.app_context():
+        db = get_session()
+        find_user_by_username("maria").is_active = False
+        db.commit()
+
+    response = customer_client.get("/my")
+    assert response.status_code == 302
+    assert "/login" in response.headers["Location"]

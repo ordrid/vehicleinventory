@@ -47,9 +47,10 @@ processor and use them to hide the actions the other role cannot take.
 
 ## Data model
 
-Six tables. Money is `Numeric(10, 2)`; all arithmetic happens in `Decimal`
-and is explicitly quantised to two places — no float ever touches a peso
-amount.
+Six tables. Money is stored as `Numeric(10, 2)` and handled as `decimal.Decimal`.
+The one place a float appears is parsing the browse filter's rate bounds
+(`min_rate`/`max_rate`) from the query string; they are immediately converted
+with `Decimal(str(...))` before any comparison against a stored rate.
 
 **users** — `id`, `username` (unique), `email` (unique, not null),
 `password_hash`, `role` (`admin` or `customer`), `full_name`, `phone`,

@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from rental.db import get_session
 from rental.models import Maintenance, RentalRates, User, Vehicle
 
-ARGS = ("--yes", "--password", "adminpass1", "--demo-password", "demopass1")
+ARGS = ("--password", "adminpass1", "--demo-password", "demopass1")
 
 
 def run(app, *args):
