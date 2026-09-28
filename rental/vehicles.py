@@ -99,7 +99,7 @@ def dashboard():
     for status, count in grouped:
         counts[status] = count
 
-    return render_template("dashboard.html", total=total, counts=counts)
+    return render_template("admin/dashboard.html", total=total, counts=counts)
 
 
 @bp.route("/vehicles")
@@ -114,7 +114,7 @@ def list_vehicles():
     rows, page, total_pages, total = paginate(query, page)
 
     return render_template(
-        "vehicles_list.html",
+        "admin/vehicles_list.html",
         vehicles=rows,
         page=page,
         total_pages=total_pages,
@@ -133,7 +133,7 @@ def view_vehicle(vehicle_id: int):
     refuses to match the word "add".
     """
     vehicle = get_vehicle_or_404(vehicle_id)
-    return render_template("vehicle_detail.html", vehicle=vehicle)
+    return render_template("admin/vehicle_detail.html", vehicle=vehicle)
 
 
 @bp.route("/vehicles/add", methods=["GET", "POST"])
@@ -167,7 +167,7 @@ def add_vehicle():
                 flash(f"Vehicle {vehicle.plate_number} was added.", "success")
                 return redirect(url_for("vehicles.list_vehicles"))
 
-    return render_template("vehicle_form.html", form=form, heading="Add Vehicle", vehicle=None)
+    return render_template("admin/vehicle_form.html", form=form, heading="Add Vehicle", vehicle=None)
 
 
 @bp.route("/vehicles/<int:vehicle_id>/edit", methods=["GET", "POST"])
@@ -199,7 +199,7 @@ def edit_vehicle(vehicle_id: int):
                 return redirect(url_for("vehicles.list_vehicles"))
 
     return render_template(
-        "vehicle_form.html", form=form, heading="Edit Vehicle", vehicle=vehicle
+        "admin/vehicle_form.html", form=form, heading="Edit Vehicle", vehicle=vehicle
     )
 
 
@@ -223,7 +223,7 @@ def delete_vehicle(vehicle_id: int):
         flash(f"Vehicle {plate} was deleted.", "success")
         return redirect(url_for("vehicles.list_vehicles"))
 
-    return render_template("vehicle_delete.html", vehicle=vehicle, form=form)
+    return render_template("admin/vehicle_delete.html", vehicle=vehicle, form=form)
 
 
 @bp.route("/search")
@@ -260,7 +260,7 @@ def search():
     rows, page, total_pages, total = paginate(query, page)
 
     return render_template(
-        "search.html",
+        "admin/search.html",
         vehicles=rows,
         term=term,
         status=status,

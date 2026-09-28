@@ -78,7 +78,7 @@ def reports():
     by_type = [(t, by_type_raw.get(t, 0)) for t in VEHICLE_TYPES]
 
     return render_template(
-        "reports.html",
+        "admin/reports.html",
         total=total,
         by_status=by_status,
         by_type=by_type,

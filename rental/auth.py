@@ -127,7 +127,7 @@ def login():
         if user is not None and user.check_password(form.password.data):
             if not user.is_active:
                 flash("That account has been disabled. Please contact the office.", "error")
-                return render_template("login.html", form=form)
+                return render_template("auth/login.html", form=form)
             session.clear()
             session["user_id"] = user.id
             session["username"] = user.username
@@ -135,7 +135,7 @@ def login():
             return redirect(safe_next_page(request.args.get("next"), user))
         flash("Invalid username or password.", "error")
 
-    return render_template("login.html", form=form)
+    return render_template("auth/login.html", form=form)
 
 
 @bp.route("/signup", methods=["GET", "POST"])
@@ -177,7 +177,7 @@ def signup():
             flash(f"Welcome, {user.username}! Your account is ready.", "success")
             return redirect(home_for(user))
 
-    return render_template("signup.html", form=form)
+    return render_template("auth/signup.html", form=form)
 
 
 @bp.route("/logout", methods=["POST"])
@@ -211,7 +211,7 @@ def forgot_password():
         )
         return redirect(url_for("auth.login"))
 
-    return render_template("forgot_password.html", form=form)
+    return render_template("auth/forgot_password.html", form=form)
 
 
 @bp.route("/change-password", methods=["GET", "POST"])
@@ -232,4 +232,4 @@ def change_password():
             flash("Your password has been changed.", "success")
             return redirect(home_for(user))
 
-    return render_template("change_password.html", form=form, forced=user.must_change_password)
+    return render_template("auth/change_password.html", form=form, forced=user.must_change_password)

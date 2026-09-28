@@ -1,7 +1,16 @@
 {% extends 'base.html' %}
+{% from 'partials/_flashes.html' import flashes with context %}
 {% block title %}Something went wrong &middot; Vehicle Inventory{% endblock %}
 
-{% block content %}
+{# This page stays on base.html until Task 11 registers the public blueprint
+   (see the note in layout_public.html / partials/_public_nav.html), so it
+   reproduces layout_public's main/content wrapping itself for now. #}
+{% block body %}
+<main class="min-h-screen">
+  {% block main %}
+    <div class="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-8">
+      {{ flashes() }}
+      {% block content %}
 <div class="flex min-h-[60vh] items-center justify-center">
   <div class="card max-w-md px-8 py-12 text-center">
     <p class="text-6xl font-extrabold tracking-tight text-slate-200">500</p>
@@ -12,4 +21,8 @@
     </div>
   </div>
 </div>
+      {% endblock %}
+    </div>
+  {% endblock %}
+</main>
 {% endblock %}
