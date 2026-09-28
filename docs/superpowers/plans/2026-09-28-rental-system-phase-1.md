@@ -2513,9 +2513,57 @@ After this change, sign in as each role and confirm the landing page differs;
 
 `rental/reports.py` moves under the admin console: give its blueprint `url_prefix="/admin/reports"`, change its routes to `@bp.route("")` and `@bp.route("/export.csv")`, and guard both with `@admin_required`.
 
-- [ ] **Step 6: Finish Task 9's layout switch**
+- [ ] **Step 6: Finish Task 9's layout switch and remove its transitional wrapper**
 
-Now that `public.landing` and `public.browse` exist, switch `403.html`, `404.html`, `500.html`, `auth/forgot_password.html` and `auth/change_password.html` to `{% extends 'layout_public.html' %}`.
+Now that `public.landing` and `public.browse` exist, switch `403.html`,
+`404.html`, `500.html`, `auth/forgot_password.html` and
+`auth/change_password.html` to `{% extends 'layout_public.html' %}`.
+
+Task 9 could not do this, because those five had to keep extending the reduced
+`base.html`, whose `{% block body %}` is empty — a `{% block content %}` override
+renders nothing when the parent never references that block. So Task 9 gave each
+of the five its own `body` block reproducing what the old base supplied:
+
+```html
+{% block body %}
+<main class="min-h-screen">
+  <div class="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-8">
+    {{ flashes() }}
+    {% block content %}{% endblock %}
+  </div>
+</main>
+{% endblock %}
+```
+
+`layout_public.html` already supplies exactly that skeleton, so switching each
+file means **deleting its outer `body`/`main`/padded-div wrapper and its
+`flashes()` call entirely**, keeping only the `{% block content %}` body. Leaving
+the wrapper in place would nest a second `<main>` and render the flash messages
+twice.
+
+That wrapper is duplicated five times right now. Remove every copy. Confirm none
+survives:
+
+```bash
+grep -rln 'block body' rental/templates/
+```
+
+Expected: only `layout_public.html` and `layout_admin.html` (plus
+`auth/login.html` and `auth/signup.html`, which legitimately own their full-bleed
+page body and do not use the padded column).
+
+Then check for a doubled `<main>` on a rendered error page:
+
+```bash
+uv run python -c "
+from rental import create_app
+app = create_app({'DATABASE_URL':'sqlite://','SECRET_KEY':'x'})
+html = app.test_client().get('/nope').get_data(as_text=True)
+print('main elements:', html.count('<main'))
+"
+```
+
+Expected: `main elements: 1`.
 
 - [ ] **Step 7: Create `tests/test_roles.py`**
 
