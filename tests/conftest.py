@@ -67,7 +67,7 @@ def sample_vehicle(app):
         db = get_session()
         vehicle = Vehicle(
             plate_number="ABC 1234",
-            make="Toyota",
+            brand="Toyota",
             model="Hilux",
             year=2021,
             vehicle_type="Pickup",

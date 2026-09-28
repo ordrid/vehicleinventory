@@ -20,7 +20,7 @@
   <dl class="divide-y divide-line px-6">
     {% set rows = [
       ('Plate', vehicle.plate_number),
-      ('Vehicle', vehicle.year ~ ' ' ~ vehicle.make ~ ' ' ~ vehicle.model),
+      ('Vehicle', vehicle.year ~ ' ' ~ vehicle.brand ~ ' ' ~ vehicle.model),
       ('Type', vehicle.vehicle_type),
       ('Color', vehicle.color or '—')
     ] %}

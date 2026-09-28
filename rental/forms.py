@@ -114,10 +114,10 @@ class VehicleForm(FlaskForm):
         filters=[clean_plate],
         validators=[DataRequired(message="Plate number is required."), Length(max=20)],
     )
-    make = StringField(
-        "Make",
+    brand = StringField(
+        "Brand",
         filters=[clean_text],
-        validators=[DataRequired(message="Make is required."), Length(max=50)],
+        validators=[DataRequired(message="Brand is required."), Length(max=50)],
     )
     model = StringField(
         "Model",
@@ -137,7 +137,7 @@ class VehicleForm(FlaskForm):
         validators=[DataRequired()],
     )
     date_acquired = DateField("Date acquired", validators=[Optional()])
-    remarks = TextAreaField("Remarks", filters=[clean_text], validators=[Optional()])
+    description = TextAreaField("Description", filters=[clean_text], validators=[Optional()])
     submit = SubmitField("Save vehicle")
 
     def __init__(self, *args, **kwargs):

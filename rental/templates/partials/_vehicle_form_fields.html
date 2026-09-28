@@ -23,9 +23,9 @@
   </div>
 
   <div>
-    <label class="field-label" for="{{ form.make.id }}">Make <span class="text-red-500">*</span></label>
-    {{ form.make(class="field" ~ invalid(form.make), placeholder="Toyota", required=true) }}
-    {{ errors(form.make) }}
+    <label class="field-label" for="{{ form.brand.id }}">Brand <span class="text-red-500">*</span></label>
+    {{ form.brand(class="field" ~ invalid(form.brand), placeholder="Toyota", required=true) }}
+    {{ errors(form.brand) }}
   </div>
 
   <div>
@@ -59,8 +59,8 @@
   </div>
 
   <div class="sm:col-span-2">
-    <label class="field-label" for="{{ form.remarks.id }}">Remarks</label>
-    {{ form.remarks(class="field", rows=3, placeholder="Anything worth noting about this vehicle") }}
-    {{ errors(form.remarks) }}
+    <label class="field-label" for="{{ form.description.id }}">Description</label>
+    {{ form.description(class="field", rows=3, placeholder="Anything worth noting about this vehicle") }}
+    {{ errors(form.description) }}
   </div>
 </div>

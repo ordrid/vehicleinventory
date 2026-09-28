@@ -18,14 +18,14 @@ bp = Blueprint("reports", __name__)
 CSV_COLUMNS = [
     "id",
     "plate_number",
-    "make",
+    "brand",
     "model",
     "year",
     "vehicle_type",
     "color",
     "status",
     "date_acquired",
-    "remarks",
+    "description",
 ]
 
 

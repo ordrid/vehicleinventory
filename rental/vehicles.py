@@ -19,7 +19,7 @@ PER_PAGE = 10
 # column here means a user cannot put arbitrary SQL in the ?sort= parameter.
 SORTABLE_COLUMNS = {
     "plate": Vehicle.plate_number,
-    "make": Vehicle.make,
+    "brand": Vehicle.brand,
     "year": Vehicle.year,
 }
 
@@ -48,14 +48,14 @@ def plate_already_used(plate_number: str, ignore_id: int | None = None) -> bool:
 def copy_form_into_vehicle(form: VehicleForm, vehicle: Vehicle) -> None:
     """Copy the validated form values onto a Vehicle object."""
     vehicle.plate_number = form.plate_number.data
-    vehicle.make = form.make.data
+    vehicle.brand = form.brand.data
     vehicle.model = form.model.data
     vehicle.year = form.year.data
     vehicle.vehicle_type = form.vehicle_type.data
     vehicle.color = form.color.data
     vehicle.status = form.status.data
     vehicle.date_acquired = form.date_acquired.data
-    vehicle.remarks = form.remarks.data
+    vehicle.description = form.description.data
 
 
 def apply_sorting(query, sort: str, direction: str):
@@ -99,7 +99,7 @@ def dashboard():
 @bp.route("/vehicles")
 @viewer_required
 def list_vehicles():
-    """List every vehicle in a table, 10 per page, sortable by plate, make or year."""
+    """List every vehicle in a table, 10 per page, sortable by plate, brand or year."""
     sort = request.args.get("sort", "plate")
     direction = request.args.get("dir", "asc")
     page = request.args.get("page", 1, type=int)
@@ -224,7 +224,7 @@ def delete_vehicle(vehicle_id: int):
 @bp.route("/search")
 @viewer_required
 def search():
-    """Search vehicles by plate, make or model and filter by status and type.
+    """Search vehicles by plate, brand or model and filter by status and type.
 
     The text box does a case-insensitive partial match on all three text fields
     at once. ``ilike`` is used because SQLAlchemy renders it as a real ILIKE on
@@ -243,7 +243,7 @@ def search():
         pattern = f"%{term}%"
         query = query.where(
             Vehicle.plate_number.ilike(pattern)
-            | Vehicle.make.ilike(pattern)
+            | Vehicle.brand.ilike(pattern)
             | Vehicle.model.ilike(pattern)
         )
     if status in STATUSES:

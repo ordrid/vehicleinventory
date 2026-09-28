@@ -7,14 +7,14 @@ from rental.models import Vehicle
 
 NEW_VEHICLE = {
     "plate_number": "  new 9999 ",
-    "make": "Nissan",
+    "brand": "Nissan",
     "model": "Navara",
     "year": "2022",
     "vehicle_type": "Pickup",
     "color": "Grey",
     "status": "Available",
     "date_acquired": "2022-04-01",
-    "remarks": "Bought new.",
+    "description": "Bought new.",
 }
 
 
@@ -34,7 +34,7 @@ def test_add_vehicle_saves_and_normalises_the_plate(app, auth_client):
 
     with app.app_context():
         vehicle = get_session().query(Vehicle).filter_by(plate_number="NEW 9999").one()
-        assert vehicle.make == "Nissan"
+        assert vehicle.brand == "Nissan"
         assert vehicle.year == 2022
 
 
@@ -65,7 +65,7 @@ def test_view_vehicles_paginates_at_ten_per_page(app, auth_client):
             db.add(
                 Vehicle(
                     plate_number=f"PAG {number:04d}",
-                    make="Toyota",
+                    brand="Toyota",
                     model="Vios",
                     year=2020,
                     vehicle_type="Sedan",
@@ -88,7 +88,7 @@ def test_view_vehicles_sorts_by_year(app, auth_client, sample_vehicle):
         db.add(
             Vehicle(
                 plate_number="OLD 0001",
-                make="Honda",
+                brand="Honda",
                 model="Civic",
                 year=1999,
                 vehicle_type="Sedan",
@@ -145,7 +145,7 @@ def test_edit_vehicle_rejects_a_plate_used_by_another_vehicle(app, auth_client, 
         db.add(
             Vehicle(
                 plate_number="DUP 0001",
-                make="Ford",
+                brand="Ford",
                 model="Ranger",
                 year=2020,
                 vehicle_type="Pickup",

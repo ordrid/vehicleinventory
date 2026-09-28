@@ -23,7 +23,7 @@
         <thead>
           <tr>
             <th>{{ sort_header('Plate', 'plate', sort, direction) }}</th>
-            <th class="hidden sm:table-cell">{{ sort_header('Make', 'make', sort, direction) }}</th>
+            <th class="hidden sm:table-cell">{{ sort_header('Brand', 'brand', sort, direction) }}</th>
             <th class="hidden sm:table-cell">Model</th>
             <th class="hidden md:table-cell">{{ sort_header('Year', 'year', sort, direction) }}</th>
             <th class="hidden lg:table-cell">Type</th>
@@ -36,7 +36,7 @@
           {% for vehicle in vehicles %}
             <tr>
               <td class="whitespace-nowrap font-mono text-xs font-semibold tracking-tight sm:text-[13px]">{{ vehicle.plate_number }}</td>
-              <td class="hidden font-medium sm:table-cell">{{ vehicle.make }}</td>
+              <td class="hidden font-medium sm:table-cell">{{ vehicle.brand }}</td>
               <td class="hidden text-muted sm:table-cell">{{ vehicle.model }}</td>
               <td class="hidden text-muted md:table-cell">{{ vehicle.year }}</td>
               <td class="hidden text-muted lg:table-cell">{{ vehicle.vehicle_type }}</td>

@@ -63,14 +63,14 @@ class Vehicle(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     plate_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
-    make: Mapped[str] = mapped_column(String(50), nullable=False)
+    brand: Mapped[str] = mapped_column(String(50), nullable=False)
     model: Mapped[str] = mapped_column(String(50), nullable=False)
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     vehicle_type: Mapped[str] = mapped_column(String(20), nullable=False)
     color: Mapped[str | None] = mapped_column(String(30), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="Available")
     date_acquired: Mapped[date | None] = mapped_column(Date, nullable=True)
-    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, onupdate=utcnow, nullable=False
@@ -82,4 +82,4 @@ class Vehicle(Base):
         return STATUS_BADGES.get(self.status, "pill-slate")
 
     def __repr__(self) -> str:
-        return f"<Vehicle {self.plate_number} {self.make} {self.model}>"
+        return f"<Vehicle {self.plate_number} {self.brand} {self.model}>"

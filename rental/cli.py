@@ -85,20 +85,20 @@ def seed_command():
     db = get_session()
     added = 0
 
-    for plate, make, model, year, vtype, color, status, acquired, remarks in SAMPLE_VEHICLES:
+    for plate, brand, model, year, vtype, color, status, acquired, description in SAMPLE_VEHICLES:
         if db.scalars(select(Vehicle).where(Vehicle.plate_number == plate)).first():
             continue
         db.add(
             Vehicle(
                 plate_number=plate,
-                make=make,
+                brand=brand,
                 model=model,
                 year=year,
                 vehicle_type=vtype,
                 color=color,
                 status=status,
                 date_acquired=acquired,
-                remarks=remarks or None,
+                description=description or None,
             )
         )
         added += 1

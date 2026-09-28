@@ -3,14 +3,14 @@
 {% block title %}{{ vehicle.plate_number }} &middot; Vehicle Inventory{% endblock %}
 
 {# The read-only view of one vehicle. This is the only page that shows the
-   remarks and the acquisition date without opening the edit form, so it is
+   description and the acquisition date without opening the edit form, so it is
    what a guest gets in place of Edit. #}
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
   <div>
     <p class="text-xs font-semibold uppercase tracking-wider text-muted">Vehicle</p>
     <h1 class="page-title font-mono">{{ vehicle.plate_number }}</h1>
-    <p class="mt-1 text-sm text-muted">{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</p>
+    <p class="mt-1 text-sm text-muted">{{ vehicle.year }} {{ vehicle.brand }} {{ vehicle.model }}</p>
   </div>
   <div class="no-print flex gap-2">
     <a class="btn btn-ghost" href="{{ url_for('vehicles.list_vehicles') }}">Back to vehicles</a>
@@ -31,7 +31,7 @@
   <dl class="grid gap-x-8 gap-y-5 px-5 py-6 sm:grid-cols-2">
     {% set fields = [
       ('Plate number', vehicle.plate_number),
-      ('Make',         vehicle.make),
+      ('Brand',        vehicle.brand),
       ('Model',        vehicle.model),
       ('Year',         vehicle.year),
       ('Type',         vehicle.vehicle_type),
@@ -47,10 +47,10 @@
   </dl>
 
   <div class="border-t border-line px-5 py-6">
-    <dt class="text-xs font-semibold uppercase tracking-wider text-muted">Remarks</dt>
-    {# Remarks are free text and may run to several lines, so the whitespace
+    <dt class="text-xs font-semibold uppercase tracking-wider text-muted">Description</dt>
+    {# Description is free text and may run to several lines, so the whitespace
        is preserved rather than collapsed into one paragraph. #}
-    <dd class="mt-1 whitespace-pre-line text-sm text-ink">{{ vehicle.remarks or '—' }}</dd>
+    <dd class="mt-1 whitespace-pre-line text-sm text-ink">{{ vehicle.description or '—' }}</dd>
   </div>
 
   <div class="border-t border-line bg-slate-50 px-5 py-3 text-xs text-muted">
