@@ -114,6 +114,23 @@ booking (pending reservations, active rentals, today's pickups/returns) are
 in the schema now so phase 1's dashboards can report real, if currently
 empty, figures — the booking flow that populates them is phase 3.
 
+## The domain core (phase 2)
+
+`rental/domain/` holds three pure, framework-free modules built in phase 2:
+`pricing.py` (quoting a rental, itemised, and late fees), `availability.py`
+(whether a vehicle is bookable over a date range, from plain intervals) and
+`lifecycle.py` (which reservation/rental/vehicle status changes are legal,
+and what each business action changes). Nothing in `rental/domain/` imports
+Flask, SQLAlchemy or `rental.models` — stdlib only — so every rule is tested
+without a database or an app context. `scripts/check-domain-purity.py`
+enforces that boundary by importing the domain modules in isolation and
+failing if anything framework-shaped leaks in; it runs as part of the test
+suite (`tests/test_domain_purity.py`), not just by hand. `rental/clock.py` is
+the single source of "now" and "today" — a naive Philippine-time value read
+the same way whether the server itself runs in Manila or in UTC — replacing
+three clocks phase 1 left inconsistent. Phase 2 ships no way to create a
+reservation; that arrives with the booking flow in phase 3.
+
 ## Getting started
 
 Requires [uv](https://docs.astral.sh/uv/). With no `DATABASE_URL` set the app
@@ -266,6 +283,7 @@ raising an error on the next query.
 app.py                       entry point: exposes `app` for Vercel
 rental/
   __init__.py                app factory, config, blueprints, error pages
+  clock.py                   the single source of "now" and "today" (Philippine time, naive)
   db.py                      engine, sessions, get_database_url()
   models.py                  User, Vehicle, RentalRates, Reservation, Rental, Maintenance
   forms.py                   Login/Signup/Vehicle/Rates/password forms
@@ -278,11 +296,16 @@ rental/
     rates.py                   the rental rates form
   reports.py                  fleet reports page and CSV export
   cli.py                     init-db, create-admin, seed, reset-db
+  domain/                    pure, framework-free rules (phase 2): pricing.py,
+                              availability.py, lifecycle.py — stdlib only, no
+                              Flask/SQLAlchemy/rental.models
   templates/                 base.html, layout_public.html, layout_admin.html,
                               public/, customer/, admin/, auth/, partials/
   static/
     src/input.css            Tailwind source: theme tokens + component classes
     css/output.css           built and committed
+scripts/
+  check-domain-purity.py     fails if rental/domain/ imports anything but the standard library
 tests/                       pytest suite (in-memory SQLite)
 ```
 

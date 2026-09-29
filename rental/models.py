@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from .clock import now
 
 # The fixed option lists used by the forms, the filters and the reports.
 VEHICLE_TYPES = ["Sedan", "Hatchback", "MPV", "SUV", "Pickup", "Van", "Truck", "Motorcycle"]
@@ -26,11 +28,6 @@ STATUS_BADGES = {
     "RENTED": "pill-blue",
     "MAINTENANCE": "pill-slate",
 }
-
-
-def utcnow() -> datetime:
-    """Return the current UTC time (used as the default for timestamp columns)."""
-    return datetime.now(timezone.utc)
 
 
 class Base(DeclarativeBase):
@@ -57,7 +54,7 @@ class User(Base):
     # temporary password; there is no email sending in this project.
     reset_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now, nullable=False)
 
     def set_password(self, password: str) -> None:
         """Hash the given plain-text password and store it. The password itself is never saved."""
@@ -107,9 +104,9 @@ class Vehicle(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     date_acquired: Mapped[date | None] = mapped_column(Date, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+        DateTime, default=now, onupdate=now, nullable=False
     )
 
     @property
@@ -155,7 +152,7 @@ class RentalRates(Base):
         Numeric(10, 2), nullable=False, default=DEFAULT_LATE_FEE
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+        DateTime, default=now, onupdate=now, nullable=False
     )
 
     @classmethod
@@ -230,9 +227,9 @@ class Reservation(Base):
     )
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+        DateTime, default=now, onupdate=now, nullable=False
     )
 
     def assign_number(self) -> None:
@@ -288,9 +285,9 @@ class Rental(Base):
     )
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=utcnow, onupdate=utcnow, nullable=False
+        DateTime, default=now, onupdate=now, nullable=False
     )
 
     def assign_number(self) -> None:
@@ -318,7 +315,7 @@ class Maintenance(Base):
     actual_end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="SCHEDULED")
     cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now, nullable=False)
 
     @property
     def blocks_booking(self) -> bool:

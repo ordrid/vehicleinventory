@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import datetime, timezone
 
 from flask import Blueprint, Response, render_template
 from sqlalchemy import extract, func, select
 
 from .auth import admin_required
+from .clock import now
 from .db import get_session
 from .models import VEHICLE_STATUSES, VEHICLE_TYPES, Vehicle
 
@@ -84,7 +84,7 @@ def reports():
         by_status=by_status,
         by_type=by_type,
         by_year=count_by_year_acquired(),
-        generated_at=datetime.now(timezone.utc),
+        generated_at=now(),
     )
 
 
@@ -104,7 +104,7 @@ def export_csv():
     for vehicle in vehicles:
         writer.writerow([getattr(vehicle, column) or "" for column in CSV_COLUMNS])
 
-    filename = f"vehicles-{datetime.now(timezone.utc):%Y%m%d}.csv"
+    filename = f"vehicles-{now():%Y%m%d}.csv"
     return Response(
         buffer.getvalue(),
         mimetype="text/csv",

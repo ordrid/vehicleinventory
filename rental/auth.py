@@ -19,7 +19,8 @@ from sqlalchemy import select
 
 from .db import get_session
 from .forms import ChangePasswordForm, ForgotPasswordForm, LoginForm, SignupForm
-from .models import User, utcnow
+from .clock import now
+from .models import User
 
 bp = Blueprint("auth", __name__)
 
@@ -201,7 +202,7 @@ def forgot_password():
     if form.validate_on_submit():
         user = find_user_by_email(form.email.data)
         if user is not None:
-            user.reset_requested_at = utcnow()
+            user.reset_requested_at = now()
             get_session().commit()
         flash(
             "If that address has an account, you have asked the office to reset it. "

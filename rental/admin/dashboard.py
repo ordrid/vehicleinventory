@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import datetime, time
 
 from flask import Blueprint, render_template
 from sqlalchemy import func, select
 
 from ..auth import admin_required
+from ..clock import today
 from ..db import get_session
 from ..models import VEHICLE_STATUSES, Rental, Reservation, Vehicle
 
@@ -35,8 +36,8 @@ def dashboard():
     for status, count in grouped:
         counts[status] = count
 
-    today_start = datetime.combine(date.today(), time.min)
-    today_end = datetime.combine(date.today(), time.max)
+    today_start = datetime.combine(today(), time.min)
+    today_end = datetime.combine(today(), time.max)
 
     pending = db.scalar(
         select(func.count()).select_from(Reservation).where(Reservation.status == "PENDING")
