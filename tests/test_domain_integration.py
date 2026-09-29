@@ -93,3 +93,23 @@ def test_the_workflow_cannot_be_skipped():
     """A vehicle cannot be collected against a reservation nobody confirmed."""
     with pytest.raises(TransitionError):
         start_rental("PENDING")
+
+
+def test_late_charge_rounds_a_partial_day_up_not_down():
+    """25 hours late is two late days, not one.
+
+    The demo scenario's own 48-hours-late figure lands exactly on a day
+    boundary, so ceil and floor division agree there and the rounding rule
+    itself goes unexercised. This picks a return that is late by a partial
+    day on top of a whole one, where the two disagree, and states the
+    expected peso figure as a literal worked out from late_charge's own
+    rules -- not by calling the function under test:
+
+        late_hours = ceil(25 * 3600 / 3600) = 25
+        late_days  = ceil(25 / 24) = 2          (floor would give 1)
+        fee        = 800.00 x 2 = 1,600.00
+    """
+    actual_return = RETURN + timedelta(hours=25)
+    late_hours, fee = late_charge(RETURN, actual_return, RATES.late_fee_per_day)
+    assert late_hours == 25
+    assert fee == Decimal("1600.00")
