@@ -15,7 +15,7 @@ from decimal import ROUND_HALF_UP, Decimal
 PESO = Decimal("0.01")
 
 
-def money(value) -> Decimal:
+def money(value: Decimal | int | str) -> Decimal:
     """Quantise to two decimal places, rounding half up.
 
     Every amount this module returns has passed through here, so a total can
@@ -112,6 +112,18 @@ def _base_amount(duration: Duration, daily_rate: Decimal, hourly_rate: Decimal |
     return money(daily_rate * duration.full_days + remainder)
 
 
+def _hourly_remainder_hit_the_daily_cap(
+    duration: Duration, daily_rate: Decimal, hourly_rate: Decimal
+) -> bool:
+    """True when the part-day hourly charge was capped at a full day's rate.
+
+    When this is true the remainder is billed as a whole day, not by the hour,
+    and the summary line must say so -- otherwise it names an hour count next
+    to an amount that is not an hourly charge at all.
+    """
+    return money(hourly_rate * duration.extra_hours) > money(daily_rate)
+
+
 def quote(
     pickup_at: datetime,
     return_at: datetime,
@@ -134,7 +146,15 @@ def quote(
     base_amount = _base_amount(duration, daily_rate, hourly_rate)
     days = duration.billable_days
 
-    if hourly_rate is None or duration.extra_hours == 0:
+    if (
+        hourly_rate is None
+        or duration.extra_hours == 0
+        or _hourly_remainder_hit_the_daily_cap(duration, daily_rate, hourly_rate)
+    ):
+        # Either there is no hourly component, there is no remainder to
+        # describe, or the remainder was capped at a full day's rate -- in
+        # every one of these cases the amount below is exactly
+        # `daily_rate x billable_days`, so that is what the line must say.
         base_detail = f"{_peso(daily_rate)} x {duration.billable_days} day(s)"
     else:
         base_detail = (

@@ -115,6 +115,31 @@ def test_a_short_hourly_rental_is_billed_by_the_hour():
     assert price(at(hours=3), hourly="250.00").base_amount == Decimal("750.00")
 
 
+def test_the_capped_hourly_remainder_is_described_as_a_day_not_hours():
+    """The itemised line must match the amount it sits beside.
+
+    A 23-hour rental's remainder is capped at the daily rate (see
+    test_the_hourly_remainder_is_capped_at_a_full_day), so the amount is one
+    full day's charge. Before this fix the line still read "0 day(s) + 23
+    hour(s)" next to that amount -- a customer would see "0 days" beside a
+    full day's charge. Once the cap applies the line must say what actually
+    happened: a whole day was billed.
+    """
+    q = price(at(hours=23), hourly="250.00")
+    label, detail, amount = q.lines[0]
+    assert label == "Base rental"
+    assert amount == Decimal("1500.00")
+    assert detail == "₱1,500.00 x 1 day(s)"
+    assert "hour(s)" not in detail
+
+
+def test_an_uncapped_hourly_remainder_still_names_the_hours():
+    """The uncapped wording is unchanged: it is accurate, so it stands."""
+    q = price(at(hours=25), hourly="250.00")
+    _, detail, _ = q.lines[0]
+    assert detail == "₱1,500.00 x 1 day(s) + 1 hour(s)"
+
+
 def test_a_daily_only_vehicle_rounds_a_part_day_up():
     """hourly_rate is None -- the NULL the seed carries for three vehicles."""
     assert price(at(hours=3)).base_amount == Decimal("1500.00")
