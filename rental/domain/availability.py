@@ -25,7 +25,7 @@ MAINTENANCE = "maintenance"
 CONFLICT = "conflict"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, order=True)
 class Interval:
     """A half-open period: `start` inclusive, `end` exclusive.
 
