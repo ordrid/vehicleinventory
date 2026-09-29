@@ -268,6 +268,15 @@ export.
 `uv export --no-hashes --no-dev > requirements.txt` and committed as a fallback
 for hosts that do not read `uv.lock`.
 
+Step 3 is the one that bites. If `DATABASE_URL` is missing from the Vercel
+project, the deployment still builds and still boots, and the symptom is
+oddly specific: the landing page, the browse grid and every vehicle detail
+page return 500, while the login, sign-up and forgot-password pages render
+perfectly. The pages that work are the ones that never run a query. The app
+now refuses to start on Vercel without `DATABASE_URL` rather than inventing
+an empty SQLite file, so the logs name the cause instead of reporting
+`no such table: vehicles`.
+
 ### Why the database is configured the way it is
 
 `rental/db.py` normalises `postgres://` and `postgresql://` URLs to
