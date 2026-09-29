@@ -7,8 +7,10 @@ from decimal import Decimal
 from flask import Blueprint, abort, render_template, request
 from sqlalchemy import func, select
 
+from . import scheduling
 from .admin.fleet import GRID_PER_PAGE, paginate
 from .auth import current_role
+from .booking import wants
 from .db import get_session
 from .models import TRANSMISSIONS, VEHICLE_TYPES, RentalRates, Vehicle
 
@@ -105,6 +107,33 @@ def vehicle_detail(vehicle_id: int):
     if not vehicle.is_active and current_role() != "admin":
         abort(404)
 
+    pickup = request.args.get("pickup", "")
+    return_ = request.args.get("return", "")
+    interval = scheduling.parse_window(pickup, return_)
+    driver = wants("driver")
+    insurance = wants("insurance")
+
+    verdict = None
+    quote = None
+    if interval is not None:
+        verdict = scheduling.availability_for(db, vehicle, interval)
+        if verdict.ok:
+            quote = scheduling.quote_for(
+                db,
+                vehicle,
+                interval,
+                want_additional_driver=driver,
+                want_insurance=insurance,
+            )
+
     return render_template(
-        "storefront/vehicle_detail.html", vehicle=vehicle, rates=RentalRates.current(db)
+        "storefront/vehicle_detail.html",
+        vehicle=vehicle,
+        rates=RentalRates.current(db),
+        pickup=pickup,
+        return_=return_,
+        driver=driver,
+        insurance=insurance,
+        verdict=verdict,
+        quote=quote,
     )

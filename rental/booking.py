@@ -90,3 +90,14 @@ def api_quote():
         total=str(result.total_amount),
         lines=[[label, detail, str(amount)] for label, detail, amount in result.lines],
     )
+
+
+@bp.route("/book/<int:vehicle_id>", methods=["POST"])
+def start(vehicle_id: int):
+    """Validate the chosen window and send the customer to review it.
+
+    Task 5 fills this in. It exists here so the detail page's form has a real
+    target from the moment the form is rendered.
+    """
+    visible_vehicle(vehicle_id)
+    abort(501)

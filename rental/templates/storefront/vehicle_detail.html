@@ -1,5 +1,7 @@
 {% extends 'layout_public.html' %}
 {% from 'partials/_vehicle_image.html' import vehicle_image %}
+{% from 'partials/_date_picker.html' import date_picker %}
+{% from 'partials/_quote_lines.html' import quote_lines %}
 {% block title %}{{ vehicle.display_name }} &middot; Vehicle Rental{% endblock %}
 
 {% block content %}
@@ -88,13 +90,28 @@
         </div>
       {% endif %}
 
-      {% if is_customer %}
-        <p class="mt-4 text-sm text-muted">Online booking opens soon. Call the office to reserve this vehicle.</p>
-        <a class="btn btn-ghost mt-3 w-full" href="{{ url_for('public.browse') }}">Browse more vehicles</a>
-      {% else %}
-        <p class="mt-4 text-sm text-muted">Create an account to reserve a vehicle online.</p>
-        <a class="btn btn-primary mt-3 w-full" href="{{ url_for('auth.signup') }}">Create account</a>
-        <a class="btn btn-ghost mt-2 w-full" href="{{ url_for('auth.login') }}">Log in</a>
+      <div class="mt-5 border-t border-line pt-4">
+        {{ date_picker(url_for('booking.start', vehicle_id=vehicle.id), 'post',
+                       vehicle.id, pickup, return_, driver, insurance,
+                       'Check availability' if not quote else 'Book this vehicle') }}
+      </div>
+
+      <div class="mt-4" data-quote-panel>
+        {% if verdict and not verdict.ok %}
+          <div class="alert alert-warning">
+            <span>{{ verdict.message }}</span>
+          </div>
+        {% elif quote %}
+          <div class="border-t border-line pt-4">
+            {{ quote_lines(quote) }}
+          </div>
+        {% endif %}
+      </div>
+
+      {% if not current_user %}
+        <p class="mt-3 text-xs text-muted">
+          You will be asked to log in before the booking is confirmed.
+        </p>
       {% endif %}
     </div>
   </div>

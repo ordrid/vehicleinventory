@@ -126,3 +126,85 @@ def test_a_disabled_vehicle_is_hidden_from_visitors_but_not_from_an_admin(
 
     assert client.get(f"/vehicles/{sample_vehicle}").status_code == 404
     assert admin_client.get(f"/vehicles/{sample_vehicle}").status_code == 200
+
+
+def test_detail_page_shows_no_quote_until_dates_are_chosen(client, sample_vehicle):
+    body = client.get(f"/vehicles/{sample_vehicle}").get_data(as_text=True)
+
+    assert "Check availability" in body
+    assert "Total" not in body
+
+
+def test_detail_page_prices_the_chosen_window_without_javascript(client, sample_vehicle):
+    body = client.get(
+        f"/vehicles/{sample_vehicle}?pickup=2026-01-10T09:00&return=2026-01-12T09:00"
+    ).get_data(as_text=True)
+
+    # The sample vehicle is 2,200.00/day; two days is 4,400.00.
+    assert "4,400.00" in body
+    assert "Base rental" in body
+
+
+def test_detail_page_keeps_the_extras_ticked_and_charges_for_them(client, sample_vehicle, app):
+    from decimal import Decimal
+
+    from rental.db import get_session
+    from rental.models import RentalRates
+
+    with app.app_context():
+        db = get_session()
+        rates = RentalRates.current(db)
+        rates.insurance_fee_per_day = Decimal("300.00")
+        db.commit()
+
+    body = client.get(
+        f"/vehicles/{sample_vehicle}?pickup=2026-01-10T09:00&return=2026-01-12T09:00"
+        "&insurance=1"
+    ).get_data(as_text=True)
+
+    assert "5,000.00" in body  # 4,400 + 300 x 2
+    assert "Insurance" in body
+
+
+def test_detail_page_explains_a_conflict_instead_of_pricing_it(client, sample_vehicle, app):
+    from datetime import datetime
+    from decimal import Decimal
+
+    from rental.db import get_session
+    from rental.models import Reservation, User
+
+    with app.app_context():
+        db = get_session()
+        customer = db.query(User).filter_by(username="maria").one()
+        db.add(
+            Reservation(
+                user_id=customer.id,
+                vehicle_id=sample_vehicle,
+                pickup_at=datetime(2026, 1, 10, 9, 0),
+                return_at=datetime(2026, 1, 12, 9, 0),
+                pickup_location="Main office",
+                return_location="Main office",
+                daily_rate=Decimal("2200.00"),
+                base_amount=Decimal("0.00"),
+                additional_fees=Decimal("0.00"),
+                total_amount=Decimal("0.00"),
+                status="PENDING",
+            )
+        )
+        db.commit()
+
+    body = client.get(
+        f"/vehicles/{sample_vehicle}?pickup=2026-01-10T09:00&return=2026-01-12T09:00"
+    ).get_data(as_text=True)
+
+    assert "already reserved or rented" in body.lower()
+    assert "4,400.00" not in body
+
+
+def test_detail_page_offers_booking_to_a_signed_out_visitor(client, sample_vehicle):
+    body = client.get(
+        f"/vehicles/{sample_vehicle}?pickup=2026-01-10T09:00&return=2026-01-12T09:00"
+    ).get_data(as_text=True)
+
+    # The price is public; Book is what sends them to log in (Task 5).
+    assert f'action="/book/{sample_vehicle}"' in body
