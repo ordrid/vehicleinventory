@@ -33,4 +33,7 @@ for name in modules:
 leaked = sorted(m for m in sys.modules if m.startswith(FORBIDDEN))
 print("domain modules checked :", ", ".join(modules))
 print("framework modules pulled in:", ", ".join(leaked) if leaked else "NONE")
-assert not leaked, leaked
+if leaked:
+    raise SystemExit(
+        "rental/domain/ is no longer pure -- it pulled in: " + ", ".join(leaked)
+    )
