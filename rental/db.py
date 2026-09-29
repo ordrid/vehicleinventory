@@ -8,14 +8,18 @@ while it is being developed.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from flask import Flask, g
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
 
-# Used when no DATABASE_URL is provided (local development / demos).
-DEFAULT_SQLITE_URL = "sqlite:///rental.db"
+# Used when no DATABASE_URL is provided (local development / demos). The two
+# spellings must agree: the URL is what SQLAlchemy connects to, the path is what
+# we check for before deciding the fallback is safe.
+DEFAULT_SQLITE_FILE = "rental.db"
+DEFAULT_SQLITE_URL = f"sqlite:///{DEFAULT_SQLITE_FILE}"
 
 
 def get_database_url() -> str:
@@ -37,13 +41,21 @@ def get_database_url() -> str:
     """
     url = os.environ.get("DATABASE_URL", "").strip()
     if not url:
-        # Vercel sets VERCEL=1 in every build and every runtime invocation.
-        if os.environ.get("VERCEL"):
+        # The fallback may resume an existing local database; it may never
+        # invent one. Keying this off a platform variable such as VERCEL was
+        # too fragile -- that one only exists when the project exposes system
+        # environment variables, which is a setting that can be turned off. A
+        # missing file is a misconfiguration on any host, so this rule needs no
+        # help from the platform to be right.
+        if not Path(DEFAULT_SQLITE_FILE).exists():
             raise RuntimeError(
-                "DATABASE_URL is not set on this deployment. Refusing to fall back "
-                "to SQLite, which would start normally and then fail on every page "
-                "that reads a vehicle. Set DATABASE_URL to the Neon connection "
-                "string in the Vercel project's Environment Variables, then redeploy."
+                f"DATABASE_URL is not set and there is no {DEFAULT_SQLITE_FILE} to "
+                "fall back to. Refusing to create an empty database, which would "
+                "start normally and then fail on every page that reads a vehicle. "
+                "On Vercel: set DATABASE_URL in the project's Environment "
+                "Variables for the Production environment, then REDEPLOY -- a "
+                "deployment only sees the variables that existed when it was "
+                "created. Locally: run `flask reset-db` to create the file."
             )
         return DEFAULT_SQLITE_URL
     if url.startswith("postgres://"):

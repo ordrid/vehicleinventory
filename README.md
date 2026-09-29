@@ -268,14 +268,22 @@ export.
 `uv export --no-hashes --no-dev > requirements.txt` and committed as a fallback
 for hosts that do not read `uv.lock`.
 
-Step 3 is the one that bites. If `DATABASE_URL` is missing from the Vercel
-project, the deployment still builds and still boots, and the symptom is
-oddly specific: the landing page, the browse grid and every vehicle detail
-page return 500, while the login, sign-up and forgot-password pages render
-perfectly. The pages that work are the ones that never run a query. The app
-now refuses to start on Vercel without `DATABASE_URL` rather than inventing
-an empty SQLite file, so the logs name the cause instead of reporting
+Step 3 is the one that bites, in two ways.
+
+If `DATABASE_URL` is missing, the deployment still builds and still boots, and
+the symptom is oddly specific: the landing page, the browse grid and every
+vehicle detail page return 500, while the login, sign-up and forgot-password
+pages render perfectly. The pages that work are the ones that never run a
+query. The app now refuses to start rather than inventing an empty SQLite
+file, so the logs name the cause instead of reporting
 `no such table: vehicles`.
+
+And setting the variable is not enough on its own. Vercel resolves environment
+variables when a deployment is **created**, so a deployment built before the
+variable existed never sees it however the dashboard looks afterwards —
+**redeploy after adding it**. Variables are also scoped per environment: one
+ticked for Development but not Production leaves production behaving exactly
+as if it were unset.
 
 ### Why the database is configured the way it is
 
