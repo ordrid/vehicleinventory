@@ -41,7 +41,7 @@ def landing():
     )
 
     return render_template(
-        "public/landing.html", featured=featured, available_count=available_count
+        "storefront/landing.html", featured=featured, available_count=available_count
     )
 
 
@@ -76,7 +76,7 @@ def browse():
     vehicles, page, total_pages, total = paginate(query, page, GRID_PER_PAGE)
 
     return render_template(
-        "public/browse.html",
+        "storefront/browse.html",
         vehicles=vehicles,
         total=total,
         page=page,
@@ -106,5 +106,5 @@ def vehicle_detail(vehicle_id: int):
         abort(404)
 
     return render_template(
-        "public/vehicle_detail.html", vehicle=vehicle, rates=RentalRates.current(db)
+        "storefront/vehicle_detail.html", vehicle=vehicle, rates=RentalRates.current(db)
     )
