@@ -23,6 +23,15 @@ from rental.domain.lifecycle import (
     start_rental,
 )
 
+# `rental/domain/` may never import `rental.models` -- that is what
+# scripts/check-domain-purity.py (and tests/test_domain_purity.py) enforce.
+# But this test module lives in tests/, where importing it is not just legal
+# but the whole point: lifecycle.py duplicates phase 1's status strings as
+# literals rather than importing them, precisely to stay pure, and nothing
+# else notices if the two copies drift apart. These tests are that guard.
+from rental import models
+from rental.domain.availability import MAINTENANCE as AVAILABILITY_MAINTENANCE_REASON
+
 
 # -- the transition tables --------------------------------------------------
 
@@ -137,3 +146,66 @@ def test_rejecting_a_confirmed_reservation_is_refused():
     """Once confirmed it is cancelled, not rejected -- they mean different things."""
     with pytest.raises(TransitionError):
         reject_reservation("CONFIRMED")
+
+
+# -- the drift guard ---------------------------------------------------------
+#
+# lifecycle.py cannot import rental.models (that would break domain purity),
+# so it re-spells RESERVATION_STATUSES, RENTAL_STATUSES and VEHICLE_STATUSES
+# as literals. The reviewer's phase-2 regression: renaming "REJECTED" to
+# "DECLINED" throughout rental/models.py, admin/fleet.py, reports.py and
+# tests/test_models.py, while lifecycle.py went on speaking "REJECTED" --
+# and all 204 tests passed, because nothing compared the two vocabularies.
+# The phase-3 failure this allows: reject_reservation() returns
+# StateChange("REJECTED", ...); the route writes "REJECTED" into a column
+# whose vocabulary no longer contains it; the reservation renders with no
+# badge and vanishes from every status filter, raising nothing.
+
+
+def test_reservation_vocabulary_matches_models():
+    """lifecycle's reservation statuses must be exactly models.RESERVATION_STATUSES."""
+    lifecycle_only = set(RESERVATION_TRANSITIONS) - set(models.RESERVATION_STATUSES)
+    models_only = set(models.RESERVATION_STATUSES) - set(RESERVATION_TRANSITIONS)
+    assert not lifecycle_only and not models_only, (
+        "lifecycle.RESERVATION_TRANSITIONS and models.RESERVATION_STATUSES have "
+        f"drifted apart -- only in lifecycle.py: {sorted(lifecycle_only) or 'none'}; "
+        f"only in models.py: {sorted(models_only) or 'none'}"
+    )
+
+
+def test_rental_vocabulary_matches_models():
+    """lifecycle's rental statuses must be exactly models.RENTAL_STATUSES."""
+    lifecycle_only = set(RENTAL_TRANSITIONS) - set(models.RENTAL_STATUSES)
+    models_only = set(models.RENTAL_STATUSES) - set(RENTAL_TRANSITIONS)
+    assert not lifecycle_only and not models_only, (
+        "lifecycle.RENTAL_TRANSITIONS and models.RENTAL_STATUSES have drifted "
+        f"apart -- only in lifecycle.py: {sorted(lifecycle_only) or 'none'}; "
+        f"only in models.py: {sorted(models_only) or 'none'}"
+    )
+
+
+def test_every_vehicle_status_the_lifecycle_can_emit_is_a_real_status():
+    """Every StateChange.vehicle_status the five operations can produce must be
+    a member of models.VEHICLE_STATUSES -- a route trusts these literally."""
+    emitted = {
+        confirm_reservation("PENDING").vehicle_status,
+        reject_reservation("PENDING").vehicle_status,
+        cancel_reservation("CONFIRMED").vehicle_status,
+        start_rental("CONFIRMED").vehicle_status,
+        complete_rental("CONFIRMED", "ACTIVE").vehicle_status,
+    }
+    unknown = emitted - set(models.VEHICLE_STATUSES)
+    assert not unknown, (
+        "lifecycle.py emits a vehicle status models.VEHICLE_STATUSES does not "
+        f"recognise: {sorted(unknown)} (known: {models.VEHICLE_STATUSES})"
+    )
+
+
+def test_the_maintenance_reason_constant_names_a_real_vehicle_status():
+    """availability.MAINTENANCE is spelled lower-case ("maintenance") while
+    models.VEHICLE_STATUSES spells the same status upper-case ("MAINTENANCE").
+    This asserts the two still name the same status, case aside."""
+    assert AVAILABILITY_MAINTENANCE_REASON.upper() in models.VEHICLE_STATUSES, (
+        f"availability.MAINTENANCE = {AVAILABILITY_MAINTENANCE_REASON!r} does not "
+        f"correspond to any status in models.VEHICLE_STATUSES = {models.VEHICLE_STATUSES}"
+    )
