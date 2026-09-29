@@ -18,3 +18,5 @@ wheels/
 
 # Worktrees created for isolated feature work.
 .claude/worktrees/
+.vercel
+.env*
