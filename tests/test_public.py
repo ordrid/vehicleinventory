@@ -208,3 +208,69 @@ def test_detail_page_offers_booking_to_a_signed_out_visitor(client, sample_vehic
 
     # The price is public; Book is what sends them to log in (Task 5).
     assert f'action="/book/{sample_vehicle}"' in body
+
+
+def test_browse_shows_no_per_date_verdict_without_dates(client, sample_vehicle):
+    body = client.get("/vehicles").get_data(as_text=True)
+
+    assert "Available for your dates" not in body
+    assert "Not available for your dates" not in body
+
+
+def test_browse_marks_a_free_vehicle_available_for_the_chosen_dates(client, sample_vehicle):
+    body = client.get(
+        "/vehicles?pickup=2026-01-10T09:00&return=2026-01-12T09:00"
+    ).get_data(as_text=True)
+
+    assert "Available for your dates" in body
+
+
+def test_browse_marks_a_taken_vehicle_unavailable_for_the_chosen_dates(
+    client, sample_vehicle, app
+):
+    from datetime import datetime
+    from decimal import Decimal
+
+    from rental.db import get_session
+    from rental.models import Reservation, User
+
+    with app.app_context():
+        db = get_session()
+        customer = db.query(User).filter_by(username="maria").one()
+        db.add(
+            Reservation(
+                user_id=customer.id,
+                vehicle_id=sample_vehicle,
+                pickup_at=datetime(2026, 1, 10, 9, 0),
+                return_at=datetime(2026, 1, 12, 9, 0),
+                pickup_location="Main office",
+                return_location="Main office",
+                daily_rate=Decimal("2200.00"),
+                base_amount=Decimal("0.00"),
+                additional_fees=Decimal("0.00"),
+                total_amount=Decimal("0.00"),
+                status="CONFIRMED",
+            )
+        )
+        db.commit()
+
+    body = client.get(
+        "/vehicles?pickup=2026-01-10T09:00&return=2026-01-12T09:00"
+    ).get_data(as_text=True)
+
+    assert "Not available for your dates" in body
+
+
+def test_browse_carries_the_dates_into_each_vehicles_link(client, sample_vehicle):
+    body = client.get(
+        "/vehicles?pickup=2026-01-10T09:00&return=2026-01-12T09:00"
+    ).get_data(as_text=True)
+
+    assert f"/vehicles/{sample_vehicle}?pickup=2026-01-10T09%3A00" in body
+
+
+def test_browse_ignores_a_backwards_window_rather_than_erroring(client, sample_vehicle):
+    response = client.get("/vehicles?pickup=2026-01-12T09:00&return=2026-01-10T09:00")
+
+    assert response.status_code == 200
+    assert "Available for your dates" not in response.get_data(as_text=True)

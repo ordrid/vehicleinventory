@@ -55,6 +55,7 @@ def browse():
     shared. Date-based availability filtering arrives with the booking engine in
     phase 3; these filters are the ones that depend only on the vehicle itself.
     """
+    db = get_session()
     vehicle_type = request.args.get("type", "")
     transmission = request.args.get("transmission", "")
     seats = request.args.get("seats", type=int)
@@ -77,6 +78,20 @@ def browse():
     query = query.order_by(Vehicle.daily_rate.asc(), Vehicle.brand.asc())
     vehicles, page, total_pages, total = paginate(query, page, GRID_PER_PAGE)
 
+    pickup = request.args.get("pickup", "")
+    return_ = request.args.get("return", "")
+    interval = scheduling.parse_window(pickup, return_)
+    driver = wants("driver")
+    insurance = wants("insurance")
+
+    # Only the page's own vehicles are checked -- a verdict per row on the
+    # whole fleet would be a query per vehicle for rows nobody is looking at.
+    verdicts = (
+        {v.id: scheduling.availability_for(db, v, interval) for v in vehicles}
+        if interval is not None
+        else {}
+    )
+
     return render_template(
         "storefront/browse.html",
         vehicles=vehicles,
@@ -88,7 +103,15 @@ def browse():
         seats=seats,
         min_rate=min_rate,
         max_rate=max_rate,
-        filtered=bool(vehicle_type or transmission or seats or min_rate or max_rate),
+        pickup=pickup,
+        return_=return_,
+        driver=driver,
+        insurance=insurance,
+        verdicts=verdicts,
+        filtered=bool(
+            vehicle_type or transmission or seats or min_rate or max_rate
+            or pickup or return_
+        ),
     )
 
 
