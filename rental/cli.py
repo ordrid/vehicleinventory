@@ -7,7 +7,7 @@ These commands are run by hand from a laptop instead, pointed at Neon.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from urllib.parse import urlparse
 
@@ -16,6 +16,7 @@ from flask import Flask, current_app
 from flask.cli import with_appcontext
 from sqlalchemy import select
 
+from .clock import today
 from .db import get_engine, get_session
 from .models import Base, Maintenance, RentalRates, User, Vehicle
 
@@ -145,13 +146,13 @@ def seed_everything(db, admin_password: str, demo_password: str) -> dict[str, in
     # the seeded state agrees with the bookability rule rather than contradicting it.
     workshop = db.scalars(select(Vehicle).where(Vehicle.status == "MAINTENANCE")).first()
     if workshop is not None and db.scalars(select(Maintenance)).first() is None:
-        today = date.today()
+        start = today()
         db.add(
             Maintenance(
                 vehicle_id=workshop.id,
                 description="Scheduled brake replacement and aircon service.",
-                start_date=today - timedelta(days=2),
-                expected_end_date=today + timedelta(days=5),
+                start_date=start - timedelta(days=2),
+                expected_end_date=start + timedelta(days=5),
                 status="IN_PROGRESS",
                 cost=Decimal("8500.00"),
             )

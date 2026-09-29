@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
-
 from flask_wtf import FlaskForm
 from wtforms import (
     DateField,
@@ -25,6 +23,7 @@ from wtforms.validators import (
     Regexp,
 )
 
+from .clock import today
 from .models import FUEL_TYPES, TRANSMISSIONS, VEHICLE_STATUSES, VEHICLE_TYPES
 
 MIN_YEAR = 1950
@@ -38,7 +37,7 @@ MIN_PASSWORD_LENGTH = 8
 
 def max_year() -> int:
     """Newest model year we accept: next year, since dealers sell ahead of the calendar."""
-    return date.today().year + 1
+    return today().year + 1
 
 
 def clean_plate(value: str | None) -> str | None:
