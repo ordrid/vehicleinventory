@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
-from . import auth, cli, db, portal, public, reports
+from . import auth, booking, cli, db, portal, public, reports
 from .admin import dashboard as admin_dashboard
 from .admin import fleet as admin_fleet
 from .admin import rates as admin_rates
@@ -45,6 +45,7 @@ def create_app(config: dict | None = None) -> Flask:
     db.init_app(app)
     app.register_blueprint(auth.bp)
     app.register_blueprint(public.bp)
+    app.register_blueprint(booking.bp)
     app.register_blueprint(portal.bp)
     app.register_blueprint(admin_dashboard.bp)
     app.register_blueprint(admin_fleet.bp)
