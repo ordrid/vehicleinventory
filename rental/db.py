@@ -25,10 +25,26 @@ def get_database_url() -> str:
     connection strings that start with ``postgres://`` or ``postgresql://``;
     SQLAlchemy needs an explicit driver, so both forms are rewritten to
     ``postgresql+psycopg://``. When the variable is empty or missing we fall
-    back to a local SQLite file.
+    back to a local SQLite file -- but only when we are actually running
+    locally.
+
+    On Vercel that fallback is a trap rather than a convenience. A deployment
+    with no ``DATABASE_URL`` starts cleanly and serves every page that only
+    renders a form, then returns 500 on every page that runs a query, because
+    the SQLite file it invented has no tables in it. The symptom looks like a
+    code defect and is not one, so we refuse the fallback and say what is
+    actually wrong.
     """
     url = os.environ.get("DATABASE_URL", "").strip()
     if not url:
+        # Vercel sets VERCEL=1 in every build and every runtime invocation.
+        if os.environ.get("VERCEL"):
+            raise RuntimeError(
+                "DATABASE_URL is not set on this deployment. Refusing to fall back "
+                "to SQLite, which would start normally and then fail on every page "
+                "that reads a vehicle. Set DATABASE_URL to the Neon connection "
+                "string in the Vercel project's Environment Variables, then redeploy."
+            )
         return DEFAULT_SQLITE_URL
     if url.startswith("postgres://"):
         url = "postgresql+psycopg://" + url[len("postgres://") :]
