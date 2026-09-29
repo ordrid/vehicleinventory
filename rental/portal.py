@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, render_template
+from flask import Blueprint, abort, render_template
 from sqlalchemy import func, select
 
 from .auth import current_user, customer_required
@@ -53,3 +53,10 @@ def dashboard():
         active_rental=active_rental,
         total_rentals=total_rentals,
     )
+
+
+@bp.route("/reservations/<int:reservation_id>")
+@customer_required
+def reservation_detail(reservation_id: int):
+    """One reservation. Task 7 fills this in."""
+    abort(501)

@@ -119,3 +119,132 @@ def test_api_quote_404s_on_a_disabled_vehicle(client, vehicle_id, app):
     assert client.get(
         f"/api/quote?vehicle={vehicle_id}&pickup={JAN10}&return={JAN12}"
     ).status_code == 404
+
+
+def window(**extra) -> dict:
+    data = {"pickup": JAN10, "return": JAN12}
+    data.update(extra)
+    return data
+
+
+def test_book_sends_a_signed_out_visitor_to_log_in_carrying_the_dates(client, vehicle_id):
+    response = client.post(f"/book/{vehicle_id}", data=window())
+
+    assert response.status_code == 302
+    assert "/login?next=" in response.headers["Location"]
+    # The dates ride inside `next`, so its own "=" and "&" are escaped. Werkzeug
+    # leaves ":" alone -- it is legal in a query string.
+    assert "pickup%3D2026-01-10T09:00" in response.headers["Location"]
+    assert "return%3D2026-01-12T09:00" in response.headers["Location"]
+
+
+def test_book_sends_a_signed_in_customer_to_review(customer_client, vehicle_id):
+    response = customer_client.post(f"/book/{vehicle_id}", data=window())
+
+    assert response.status_code == 302
+    assert f"/book/{vehicle_id}/review" in response.headers["Location"]
+    assert "pickup=2026-01-10T09:00" in response.headers["Location"]
+    assert "return=2026-01-12T09:00" in response.headers["Location"]
+
+
+def test_book_rejects_an_unusable_window_back_to_the_vehicle(customer_client, vehicle_id):
+    response = customer_client.post(
+        f"/book/{vehicle_id}", data={"pickup": JAN12, "return": JAN10}, follow_redirects=True
+    )
+
+    assert "after the pickup" in response.get_data(as_text=True)
+
+
+def test_review_shows_the_itemised_quote_and_a_confirm_button(customer_client, vehicle_id):
+    body = customer_client.get(
+        f"/book/{vehicle_id}/review?pickup={JAN10}&return={JAN12}"
+    ).get_data(as_text=True)
+
+    assert "2,600.00" in body
+    assert "Base rental" in body
+    assert f'action="/book/{vehicle_id}/confirm"' in body
+
+
+def test_review_requires_a_signed_in_customer(client, vehicle_id):
+    response = client.get(f"/book/{vehicle_id}/review?pickup={JAN10}&return={JAN12}")
+
+    assert response.status_code == 302
+    assert "/login" in response.headers["Location"]
+
+
+def test_confirm_creates_a_pending_reservation_with_the_quote_frozen_onto_it(
+    customer_client, vehicle_id, app
+):
+    response = customer_client.post(
+        f"/book/{vehicle_id}/confirm",
+        data=window(pickup_location="Main office", return_location="Main office"),
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        db = get_session()
+        reservation = db.query(Reservation).one()
+        assert reservation.status == "PENDING"
+        assert reservation.reservation_number == "RES-00001"
+        assert reservation.total_amount == Decimal("2600.00")
+        assert reservation.daily_rate == Decimal("1300.00")
+        assert reservation.rental_days == 2
+        assert reservation.pickup_location == "Main office"
+        assert f"/my/reservations/{reservation.id}" in response.headers["Location"]
+
+
+def test_confirm_ignores_a_total_posted_by_the_client(customer_client, vehicle_id, app):
+    customer_client.post(
+        f"/book/{vehicle_id}/confirm",
+        data=window(total_amount="1.00", base_amount="1.00", pickup_location="Main office"),
+    )
+
+    with app.app_context():
+        assert get_session().query(Reservation).one().total_amount == Decimal("2600.00")
+
+
+def test_confirm_refuses_a_window_that_was_taken_in_the_meantime(
+    customer_client, vehicle_id, app
+):
+    with app.app_context():
+        db = get_session()
+        other = db.query(User).filter_by(username="admin").one()
+        db.add(
+            Reservation(
+                user_id=other.id,
+                vehicle_id=vehicle_id,
+                pickup_at=datetime(2026, 1, 10, 9, 0),
+                return_at=datetime(2026, 1, 12, 9, 0),
+                pickup_location="Main office",
+                return_location="Main office",
+                daily_rate=Decimal("1300.00"),
+                base_amount=Decimal("0.00"),
+                additional_fees=Decimal("0.00"),
+                total_amount=Decimal("0.00"),
+                status="PENDING",
+            )
+        )
+        db.commit()
+
+    response = customer_client.post(
+        f"/book/{vehicle_id}/confirm",
+        data=window(pickup_location="Main office"),
+        follow_redirects=True,
+    )
+
+    assert "just booked" in response.get_data(as_text=True)
+    with app.app_context():
+        assert get_session().query(Reservation).count() == 1
+
+
+def test_confirm_refuses_an_unusable_window(customer_client, vehicle_id, app):
+    customer_client.post(
+        f"/book/{vehicle_id}/confirm", data={"pickup": JAN12, "return": JAN10}
+    )
+
+    with app.app_context():
+        assert get_session().query(Reservation).count() == 0
+
+
+def test_an_admin_cannot_book_for_themselves(admin_client, vehicle_id):
+    assert admin_client.post(f"/book/{vehicle_id}/confirm", data=window()).status_code == 403

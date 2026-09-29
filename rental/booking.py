@@ -8,13 +8,22 @@ reservation in agreement.
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, jsonify, request
+from flask import (
+    Blueprint,
+    abort,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from sqlalchemy import select
 
 from . import scheduling
-from .auth import current_role
+from .auth import current_role, current_user, customer_required
 from .db import get_session
-from .models import Vehicle
+from .models import Reservation, Vehicle
 
 bp = Blueprint("booking", __name__)
 
@@ -92,12 +101,139 @@ def api_quote():
     )
 
 
+def window_from_request(vehicle_id: int):
+    """The chosen window, or a redirect back to the vehicle explaining why not."""
+    interval = scheduling.parse_window(
+        request.values.get("pickup"), request.values.get("return")
+    )
+    if interval is None:
+        flash("Choose a pickup time and a return time after the pickup.", "warning")
+        return None, redirect(url_for("public.vehicle_detail", vehicle_id=vehicle_id))
+    return interval, None
+
+
+def review_url(vehicle_id: int) -> str:
+    """The review page for the window currently in the request."""
+    return url_for(
+        "booking.review",
+        vehicle_id=vehicle_id,
+        pickup=request.values.get("pickup", ""),
+        **{"return": request.values.get("return", "")},
+        driver="1" if wants("driver") else "",
+        insurance="1" if wants("insurance") else "",
+    )
+
+
 @bp.route("/book/<int:vehicle_id>", methods=["POST"])
 def start(vehicle_id: int):
-    """Validate the chosen window and send the customer to review it.
+    """Validate the chosen window and send the customer on to review it.
 
-    Task 5 fills this in. It exists here so the detail page's form has a real
-    target from the moment the form is rendered.
+    A signed-out visitor is sent to log in with `next` pointing at the review
+    page, so the dates they picked survive the round trip rather than being
+    retyped.
     """
     visible_vehicle(vehicle_id)
-    abort(501)
+    interval, bail = window_from_request(vehicle_id)
+    if bail is not None:
+        return bail
+
+    target = review_url(vehicle_id)
+    if current_user() is None:
+        return redirect(url_for("auth.login", next=target))
+    return redirect(target)
+
+
+@bp.route("/book/<int:vehicle_id>/review")
+@customer_required
+def review(vehicle_id: int):
+    """The itemised quote and the Confirm button. Nothing is written here."""
+    vehicle = visible_vehicle(vehicle_id)
+    interval, bail = window_from_request(vehicle_id)
+    if bail is not None:
+        return bail
+
+    db = get_session()
+    verdict = scheduling.availability_for(db, vehicle, interval)
+    if not verdict.ok:
+        flash(verdict.message, "warning")
+        return redirect(url_for("public.vehicle_detail", vehicle_id=vehicle_id))
+
+    return render_template(
+        "booking/review.html",
+        vehicle=vehicle,
+        interval=interval,
+        quote=scheduling.quote_for(
+            db,
+            vehicle,
+            interval,
+            want_additional_driver=wants("driver"),
+            want_insurance=wants("insurance"),
+        ),
+        pickup=request.args.get("pickup", ""),
+        return_=request.args.get("return", ""),
+        driver=wants("driver"),
+        insurance=wants("insurance"),
+    )
+
+
+@bp.route("/book/<int:vehicle_id>/confirm", methods=["POST"])
+@customer_required
+def confirm(vehicle_id: int):
+    """Create the PENDING reservation, if the window is still free.
+
+    The availability shown on the review page was already stale when the
+    customer clicked. Re-checking here, inside the transaction that writes the
+    row, under a lock on the vehicle, is what makes "first request holds the
+    slot" true rather than merely likely.
+    """
+    vehicle = visible_vehicle(vehicle_id)
+    interval, bail = window_from_request(vehicle_id)
+    if bail is not None:
+        return bail
+
+    db = get_session()
+    # Serialises booking attempts for this one vehicle. Postgres honours the
+    # lock; SQLite ignores the clause and gets the same guarantee from being
+    # single-writer.
+    db.execute(select(Vehicle).where(Vehicle.id == vehicle.id).with_for_update())
+
+    verdict = scheduling.availability_for(db, vehicle, interval)
+    if not verdict.ok:
+        db.rollback()
+        flash("That vehicle was just booked for those dates. Please pick another window.", "warning")
+        return redirect(url_for("public.vehicle_detail", vehicle_id=vehicle_id))
+
+    driver = wants("driver")
+    insurance = wants("insurance")
+    # Recomputed here rather than trusted from the form: a posted total is a
+    # number the customer controls.
+    priced = scheduling.quote_for(
+        db, vehicle, interval, want_additional_driver=driver, want_insurance=insurance
+    )
+
+    reservation = Reservation(
+        user_id=current_user().id,
+        vehicle_id=vehicle.id,
+        pickup_at=interval.start,
+        return_at=interval.end,
+        pickup_location=request.form.get("pickup_location", "").strip() or None,
+        return_location=request.form.get("return_location", "").strip() or None,
+        want_additional_driver=driver,
+        want_insurance=insurance,
+        rental_hours=priced.duration.hours,
+        rental_days=priced.duration.billable_days,
+        daily_rate=priced.daily_rate,
+        hourly_rate=priced.hourly_rate,
+        base_amount=priced.base_amount,
+        additional_fees=priced.additional_fees,
+        total_amount=priced.total_amount,
+        status="PENDING",
+    )
+    db.add(reservation)
+    # flush assigns the id that the reference number is built from.
+    db.flush()
+    reservation.assign_number()
+    db.commit()
+
+    flash(f"Reservation {reservation.reservation_number} was requested.", "success")
+    return redirect(url_for("portal.reservation_detail", reservation_id=reservation.id))

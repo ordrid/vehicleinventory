@@ -52,7 +52,9 @@ def _require(view, predicate):
         user = current_user()
         if user is None:
             flash("Please log in to continue.", "warning")
-            return redirect(url_for("auth.login", next=request.path))
+            # full_path, not path: a customer sent to log in from a priced booking
+            # window must come back to that same window, dates intact.
+            return redirect(url_for("auth.login", next=request.full_path))
         if not user.is_active:
             session.clear()
             flash("That account has been disabled. Please contact the office.", "warning")

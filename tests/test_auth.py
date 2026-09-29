@@ -205,3 +205,30 @@ def test_disabling_an_account_ends_its_live_session(app, customer_client):
     response = customer_client.get("/my")
     assert response.status_code == 302
     assert "/login" in response.headers["Location"]
+
+
+def test_login_redirect_preserves_the_query_string_of_the_page_asked_for(client, sample_vehicle):
+    """A customer bounced to log in must come back to the window they priced.
+
+    The page asked for is a booking review, whose whole meaning lives in its
+    query string. `next` therefore has to carry the query string, not just the
+    path -- which is why `_require` redirects with `request.full_path`.
+    """
+    response = client.get(
+        f"/book/{sample_vehicle}/review?pickup=2026-01-10T09:00&return=2026-01-12T09:00"
+    )
+
+    assert response.status_code == 302
+    location = response.headers["Location"]
+    assert f"next=/book/{sample_vehicle}/review" in location
+    assert "pickup%3D2026-01-10T09:00" in location
+    assert "return%3D2026-01-12T09:00" in location
+
+
+def test_login_refuses_to_bounce_to_another_site(client):
+    response = client.post(
+        "/login?next=//evil.example.com",
+        data={"username": "maria", "password": "secret123"},
+    )
+
+    assert response.headers["Location"] == "/my"
