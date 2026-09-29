@@ -13,6 +13,7 @@
 ## Global Constraints
 
 - **No new runtime or dev dependencies.** `pyproject.toml`'s lists must not grow.
+- **Prove purity with `uv run python scripts/check-domain-purity.py`.** A plain `import rental.domain.x` executes `rental/__init__.py` first -- the phase-1 app factory, which imports Flask and SQLAlchemy at module scope -- so it reports a leak whatever the domain module does. The script imports through a stub parent package so the answer means something, and it checks every module in `rental/domain/`, so it needs no editing as the package grows.
 - **`rental/domain/` is pure.** No `flask`, no `sqlalchemy`, no import from `rental.models`, `rental.db` or any blueprint. A domain module must be importable with nothing but the standard library and testable without an app context. This is the constraint the whole phase exists to create — if a task needs a model, the design is wrong.
 - **Money is `decimal.Decimal`, quantised to two places, half-up**, through the single `money()` helper. No float ever participates in a money calculation.
 - **Every datetime is naive.** The system operates in one timezone. Never construct an aware datetime outside `rental/clock.py`, and never compare across the two.
@@ -425,16 +426,7 @@ Expected: PASS, 8 tests.
 This is the constraint the whole phase exists to create, so prove it rather than assume it:
 
 ```bash
-uv run python -c "
-import sys, importlib
-for m in list(sys.modules):
-    if m.startswith(('flask','sqlalchemy','rental')):
-        del sys.modules[m]
-importlib.import_module('rental.domain.pricing')
-leaked = sorted(m for m in sys.modules if m.startswith(('flask','sqlalchemy')))
-print('framework modules pulled in:', leaked or 'NONE')
-assert not leaked, leaked
-"
+uv run python scripts/check-domain-purity.py
 ```
 Expected: `NONE`.
 
@@ -750,14 +742,7 @@ Run `uv run pytest tests/test_pricing.py -q` and confirm the monotonicity test g
 - [ ] **Step 6: Confirm purity, run the suite, commit**
 
 ```bash
-uv run python -c "
-import sys, importlib
-for m in list(sys.modules):
-    if m.startswith(('flask','sqlalchemy','rental')): del sys.modules[m]
-importlib.import_module('rental.domain.pricing')
-leaked = sorted(m for m in sys.modules if m.startswith(('flask','sqlalchemy')))
-print('framework modules pulled in:', leaked or 'NONE'); assert not leaked
-"
+uv run python scripts/check-domain-purity.py
 uv run pytest -q
 git status --porcelain rental/static/css/output.css
 git add rental/domain/pricing.py tests/test_pricing.py
@@ -1057,14 +1042,7 @@ Run `uv run pytest tests/test_availability.py -q` and confirm `test_touching_end
 - [ ] **Step 6: Confirm purity, run the suite, commit**
 
 ```bash
-uv run python -c "
-import sys, importlib
-for m in list(sys.modules):
-    if m.startswith(('flask','sqlalchemy','rental')): del sys.modules[m]
-importlib.import_module('rental.domain.availability')
-leaked = sorted(m for m in sys.modules if m.startswith(('flask','sqlalchemy')))
-print('framework modules pulled in:', leaked or 'NONE'); assert not leaked
-"
+uv run python scripts/check-domain-purity.py
 uv run pytest -q
 git status --porcelain rental/static/css/output.css
 git add rental/domain/availability.py tests/test_availability.py
@@ -1365,14 +1343,7 @@ Expected: PASS, 27 tests.
 - [ ] **Step 5: Confirm purity, run the suite, commit**
 
 ```bash
-uv run python -c "
-import sys, importlib
-for m in list(sys.modules):
-    if m.startswith(('flask','sqlalchemy','rental')): del sys.modules[m]
-importlib.import_module('rental.domain.lifecycle')
-leaked = sorted(m for m in sys.modules if m.startswith(('flask','sqlalchemy')))
-print('framework modules pulled in:', leaked or 'NONE'); assert not leaked
-"
+uv run python scripts/check-domain-purity.py
 uv run pytest -q
 git status --porcelain rental/static/css/output.css
 git add rental/domain/lifecycle.py tests/test_lifecycle.py
@@ -1503,18 +1474,9 @@ Expected: PASS, 4 tests. If the late-fee arithmetic disagrees, re-read Task 3's 
 - [ ] **Step 3: Confirm the whole domain package is importable without a framework**
 
 ```bash
-uv run python -c "
-import sys, importlib
-for m in list(sys.modules):
-    if m.startswith(('flask','sqlalchemy','rental')): del sys.modules[m]
-for name in ('pricing', 'availability', 'lifecycle'):
-    importlib.import_module(f'rental.domain.{name}')
-leaked = sorted(m for m in sys.modules if m.startswith(('flask','sqlalchemy')))
-print('framework modules pulled in:', leaked or 'NONE'); assert not leaked
-print('all three domain modules import clean')
-"
+uv run python scripts/check-domain-purity.py
 ```
-Expected: `NONE`, then the confirmation line.
+Expected: `pricing, availability, lifecycle` on the first line and `NONE` on the second. If a module is missing from that list, it was never created.
 
 - [ ] **Step 4: Confirm the domain never reaches for the ORM**
 
