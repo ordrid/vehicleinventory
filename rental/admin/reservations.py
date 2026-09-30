@@ -8,13 +8,22 @@ here -- this module is the transaction around it.
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from flask import Blueprint, abort, flash, redirect, render_template, url_for
 from sqlalchemy import select
 
 from ..auth import admin_required
+from ..clock import now
 from ..db import get_session
-from ..domain.lifecycle import StateChange, TransitionError, confirm_reservation, reject_reservation
-from ..models import Reservation, User, Vehicle
+from ..domain.lifecycle import (
+    StateChange,
+    TransitionError,
+    confirm_reservation,
+    reject_reservation,
+    start_rental,
+)
+from ..models import Rental, Reservation, User, Vehicle
 
 bp = Blueprint("admin_reservations", __name__, url_prefix="/admin/reservations")
 
@@ -66,6 +75,7 @@ def queue():
         "admin/reservations.html",
         pending=[row for row in rows if row[0].status == "PENDING"],
         others=[row for row in rows if row[0].status != "PENDING"],
+        actionable_statuses=("PENDING", "CONFIRMED"),
     )
 
 
@@ -100,3 +110,55 @@ def confirm(reservation_id: int):
 def reject(reservation_id: int):
     """Decline a pending request and release the vehicle."""
     return decide(reservation_id, reject_reservation, "rejected")
+
+
+@bp.route("/<int:reservation_id>/start", methods=["POST"])
+@admin_required
+def start(reservation_id: int):
+    """Hand over the keys: create the ACTIVE rental and send the vehicle out.
+
+    Locked and re-checked the same way a booking is, so a vehicle cannot be
+    handed over twice by two admins clicking at once.
+    """
+    reservation = load_reservation(reservation_id)
+    db = get_session()
+    db.execute(select(Vehicle).where(Vehicle.id == reservation.vehicle_id).with_for_update())
+
+    existing = db.scalars(select(Rental).where(Rental.reservation_id == reservation.id)).first()
+    if existing is not None:
+        db.rollback()
+        flash(
+            f"Reservation {reservation.reservation_number} has already been handed over.",
+            "warning",
+        )
+        return redirect(url_for("admin_reservations.queue"))
+
+    try:
+        change = start_rental(reservation.status)
+    except TransitionError as error:
+        db.rollback()
+        flash(str(error), "warning")
+        return redirect(url_for("admin_reservations.queue"))
+
+    rental = Rental(
+        reservation_id=reservation.id,
+        vehicle_id=reservation.vehicle_id,
+        customer_id=reservation.user_id,
+        actual_pickup=now(),
+        expected_return=reservation.return_at,
+        rental_hours=reservation.rental_hours,
+        rental_days=reservation.rental_days,
+        late_hours=0,
+        base_amount=reservation.base_amount,
+        late_fee=Decimal("0.00"),
+        additional_fees=reservation.additional_fees,
+        total_amount=reservation.total_amount,
+        status=change.rental_status,
+    )
+    db.add(rental)
+    db.flush()
+    rental.assign_number()
+    apply_change(db, reservation, change, rental=rental)
+
+    flash(f"Rental {rental.rental_number} has started.", "success")
+    return redirect(url_for("admin_rentals.index"))

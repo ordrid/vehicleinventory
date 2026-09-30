@@ -13,14 +13,21 @@
   <td class="p-4">
     {% if actionable %}
       <div class="flex gap-2">
-        <form method="post" action="{{ url_for('admin_reservations.confirm', reservation_id=reservation.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-primary btn-sm">Confirm</button>
-        </form>
-        <form method="post" action="{{ url_for('admin_reservations.reject', reservation_id=reservation.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-ghost btn-sm">Reject</button>
-        </form>
+        {% if reservation.status == 'PENDING' %}
+          <form method="post" action="{{ url_for('admin_reservations.confirm', reservation_id=reservation.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-sm">Confirm</button>
+          </form>
+          <form method="post" action="{{ url_for('admin_reservations.reject', reservation_id=reservation.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-ghost btn-sm">Reject</button>
+          </form>
+        {% elif reservation.status == 'CONFIRMED' %}
+          <form method="post" action="{{ url_for('admin_reservations.start', reservation_id=reservation.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-sm">Start rental</button>
+          </form>
+        {% endif %}
       </div>
     {% endif %}
   </td>
@@ -79,7 +86,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for reservation, user, vehicle in others %}{{ row(reservation, user, vehicle, False) }}{% endfor %}
+        {% for reservation, user, vehicle in others %}{{ row(reservation, user, vehicle, reservation.status in actionable_statuses) }}{% endfor %}
       </tbody>
     </table>
   </div>

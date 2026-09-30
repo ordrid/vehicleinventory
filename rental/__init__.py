@@ -12,6 +12,7 @@ from . import auth, booking, cli, db, portal, public, reports
 from .admin import dashboard as admin_dashboard
 from .admin import fleet as admin_fleet
 from .admin import rates as admin_rates
+from .admin import rentals as admin_rentals
 from .admin import reservations as admin_reservations
 from .forms import max_year
 from .models import (
@@ -52,6 +53,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(admin_fleet.bp)
     app.register_blueprint(admin_rates.bp)
     app.register_blueprint(admin_reservations.bp)
+    app.register_blueprint(admin_rentals.bp)
     app.register_blueprint(reports.bp)
     cli.register_cli(app)
     register_template_globals(app)
