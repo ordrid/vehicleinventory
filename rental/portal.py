@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, render_template
+from flask import Blueprint, abort, flash, redirect, render_template, url_for
 from sqlalchemy import func, select
 
 from .auth import current_user, customer_required
+from .clock import now
 from .db import get_session
+from .domain.lifecycle import TransitionError, cancel_reservation
 from .models import Rental, Reservation, Vehicle
 
 bp = Blueprint("portal", __name__, url_prefix="/my")
@@ -55,8 +57,84 @@ def dashboard():
     )
 
 
+def owned_reservation(reservation_id: int) -> tuple[Reservation, Vehicle]:
+    """Load one of the signed-in customer's reservations, with its vehicle, or 404.
+
+    The owner filter is part of the query rather than a check afterwards, so
+    there is no path that loads someone else's row at all. A missing row and
+    somebody else's row are both 404: a 403 would confirm the record exists.
+
+    The vehicle is joined and returned alongside because the models declare no
+    relationships; callers unpack the pair.
+    """
+    db = get_session()
+    row = db.execute(
+        select(Reservation, Vehicle)
+        .join(Vehicle, Vehicle.id == Reservation.vehicle_id)
+        .where(Reservation.id == reservation_id)
+        .where(Reservation.user_id == current_user().id)
+    ).first()
+    if row is None:
+        abort(404)
+    return row[0], row[1]
+
+
+@bp.route("/reservations")
+@customer_required
+def reservations():
+    """Every reservation this customer has ever made, newest first."""
+    db = get_session()
+    rows = db.execute(
+        select(Reservation, Vehicle)
+        .join(Vehicle, Vehicle.id == Reservation.vehicle_id)
+        .where(Reservation.user_id == current_user().id)
+        .order_by(Reservation.created_at.desc(), Reservation.id.desc())
+    ).all()
+    return render_template("customer/reservations.html", reservations=rows)
+
+
 @bp.route("/reservations/<int:reservation_id>")
 @customer_required
 def reservation_detail(reservation_id: int):
-    """One reservation. Task 7 fills this in."""
-    abort(501)
+    """One reservation, with the quote exactly as it was booked."""
+    reservation, vehicle = owned_reservation(reservation_id)
+    return render_template(
+        "customer/reservation_detail.html",
+        reservation=reservation,
+        vehicle=vehicle,
+        can_cancel=can_cancel(reservation),
+    )
+
+
+def can_cancel(reservation: Reservation) -> bool:
+    """A reservation may be called off any time before pickup, not after."""
+    return reservation.status in ("PENDING", "CONFIRMED") and reservation.pickup_at > now()
+
+
+@bp.route("/reservations/<int:reservation_id>/cancel", methods=["POST"])
+@customer_required
+def cancel(reservation_id: int):
+    """Call off a booking and release the vehicle."""
+    reservation, vehicle = owned_reservation(reservation_id)
+    db = get_session()
+
+    if reservation.pickup_at <= now():
+        flash(
+            "This booking can no longer be cancelled online. Please contact the office.",
+            "warning",
+        )
+        return redirect(url_for("portal.reservation_detail", reservation_id=reservation.id))
+
+    try:
+        change = cancel_reservation(reservation.status)
+    except TransitionError as error:
+        # A stale page, not a bug: the booking moved on while it was open.
+        flash(str(error), "warning")
+        return redirect(url_for("portal.reservation_detail", reservation_id=reservation.id))
+
+    reservation.status = change.reservation_status
+    vehicle.status = change.vehicle_status
+    db.commit()
+
+    flash(f"Reservation {reservation.reservation_number} was cancelled.", "success")
+    return redirect(url_for("portal.reservation_detail", reservation_id=reservation.id))
