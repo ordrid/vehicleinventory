@@ -274,3 +274,18 @@ def test_browse_ignores_a_backwards_window_rather_than_erroring(client, sample_v
 
     assert response.status_code == 200
     assert "Available for your dates" not in response.get_data(as_text=True)
+
+
+def test_the_quote_preview_script_is_served(client):
+    response = client.get("/static/js/quote-preview.js")
+
+    assert response.status_code == 200
+    assert b"/api/quote" in response.data
+
+
+def test_the_detail_page_loads_the_quote_preview_script(client, sample_vehicle):
+    body = client.get(f"/vehicles/{sample_vehicle}").get_data(as_text=True)
+
+    assert "js/quote-preview.js" in body
+    assert "data-quote-panel" in body
+    assert f'data-vehicle="{sample_vehicle}"' in body
