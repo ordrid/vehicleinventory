@@ -131,6 +131,51 @@ the same way whether the server itself runs in Manila or in UTC — replacing
 three clocks phase 1 left inconsistent. Phase 2 ships no way to create a
 reservation; that arrives with the booking flow in phase 3.
 
+## The booking flow (phase 3)
+
+Everything from browsing with dates through a completed, possibly late,
+rental, built on the phase 2 domain core. `rental/scheduling.py` is where the
+ORM meets the domain: it loads a vehicle's other reservations, turns them
+into the plain `Interval` values `rental/domain/availability.py` works with,
+and calls `quote()` for pricing. Neither `rental/booking.py` nor
+`rental/public.py` touches the domain directly — they go through
+`scheduling`.
+
+- **Browse and detail, date-aware** (`GET /vehicles`, `GET /vehicles/<id>`) —
+  add `pickup`/`return` (and `insurance`) to either page's query string and
+  every card, and the detail page's own price, is computed from that window
+  server-side, with no JavaScript required. `GET /api/quote` returns the same
+  quote as JSON, public and session-free, for the live preview that updates
+  the price without a page reload; the page works identically with
+  JavaScript disabled.
+- **Reserve** (`POST /book/<id>`, `GET /book/<id>/review`,
+  `POST /book/<id>/confirm`) — a logged-out visitor who picks dates and hits
+  Book is sent to log in with `next` pointing at their review page, so the
+  dates they chose survive the round trip. Confirming locks the vehicle's
+  row, re-checks the window is still free inside that same transaction, and
+  only then creates the `Reservation`, snapshotting its rates and assigning
+  its `RES-00001`-style number so a later rate change never alters an
+  existing quote.
+- **My Reservations / My Rentals** (`/my/reservations`, `/my/rentals`, and
+  each one's detail page, plus cancel-before-pickup on a reservation) — a
+  customer's own bookings, present and past, with a 404 rather than a 403
+  for one that belongs to someone else.
+- **The three admin actions** on a reservation and its rental: confirm or
+  reject a pending reservation (`POST /admin/reservations/<id>/confirm`,
+  `.../reject`), start it as an active rental at pickup
+  (`POST /admin/reservations/<id>/start`), and mark the rental returned
+  (`POST /admin/rentals/<id>/return`), which charges `late_charge()` as its
+  own line when the vehicle comes back late and frees the vehicle for its
+  next booking. An illegal transition, such as starting a reservation twice,
+  flashes a message instead of raising.
+- **Profile** (`/my/profile`) — a customer's own account details.
+
+Payments and email stay out of this phase: every reservation and rental
+shows "Payment Status: Pending" and nothing here sends mail. Editing a
+booking's dates and admin-side booking on a customer's behalf are also
+absent. Phase 4 keeps the rental management dashboard, the availability
+view, maintenance, the customers page, revenue, and the reporting suite.
+
 ## Getting started
 
 Requires [uv](https://docs.astral.sh/uv/). With no `DATABASE_URL` set the app
