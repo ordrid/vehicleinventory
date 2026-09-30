@@ -9,7 +9,7 @@ import pytest
 
 from rental.clock import now
 from rental.db import get_session
-from rental.models import Reservation, User, Vehicle
+from rental.models import Rental, Reservation, User, Vehicle
 
 
 @pytest.fixture
@@ -165,3 +165,75 @@ def test_cancelling_an_already_cancelled_booking_is_a_message_not_a_500(
 
 def test_an_admin_is_refused_the_customer_pages(admin_client):
     assert admin_client.get("/my/reservations").status_code == 403
+
+
+def add_rental(app, vehicle_id, reservation_id, *, username="maria", late_fee=Decimal("0.00")):
+    """Insert one rental against an existing reservation and return its id."""
+    with app.app_context():
+        db = get_session()
+        user = db.query(User).filter_by(username=username).one()
+        reservation = db.get(Reservation, reservation_id)
+        rental = Rental(
+            reservation_id=reservation_id,
+            vehicle_id=vehicle_id,
+            customer_id=user.id,
+            actual_pickup=reservation.pickup_at,
+            expected_return=reservation.return_at,
+            actual_return=reservation.return_at + timedelta(hours=25) if late_fee else None,
+            rental_hours=48,
+            rental_days=2,
+            late_hours=25 if late_fee else 0,
+            base_amount=Decimal("2600.00"),
+            late_fee=late_fee,
+            additional_fees=Decimal("0.00"),
+            total_amount=Decimal("2600.00") + late_fee,
+            status="COMPLETED" if late_fee else "ACTIVE",
+        )
+        db.add(rental)
+        db.flush()
+        rental.assign_number()
+        db.commit()
+        return rental.id
+
+
+def test_my_rentals_explains_the_empty_state(customer_client):
+    body = customer_client.get("/my/rentals").get_data(as_text=True)
+
+    assert "No rentals yet" in body
+    assert "collect" in body.lower()
+
+
+def test_my_rentals_lists_the_customers_own_rental(customer_client, app, vehicle_id):
+    reservation_id = add_reservation(app, vehicle_id, status="CONFIRMED")
+    add_rental(app, vehicle_id, reservation_id)
+
+    body = customer_client.get("/my/rentals").get_data(as_text=True)
+
+    assert "RNT-00001" in body
+    assert "Mirage" in body
+
+
+def test_my_rentals_does_not_list_another_customers_rental(customer_client, app, vehicle_id):
+    reservation_id = add_reservation(app, vehicle_id, username="admin", status="CONFIRMED")
+    add_rental(app, vehicle_id, reservation_id, username="admin")
+
+    assert "RNT-00001" not in customer_client.get("/my/rentals").get_data(as_text=True)
+
+
+def test_rental_detail_itemises_a_late_fee(customer_client, app, vehicle_id):
+    reservation_id = add_reservation(app, vehicle_id, status="CONFIRMED")
+    rental_id = add_rental(app, vehicle_id, reservation_id, late_fee=Decimal("1600.00"))
+
+    body = customer_client.get(f"/my/rentals/{rental_id}").get_data(as_text=True)
+
+    assert "Late return" in body
+    assert "1,600.00" in body
+    assert "4,200.00" in body
+    assert "25 hour" in body
+
+
+def test_rental_detail_404s_on_another_customers_rental(customer_client, app, vehicle_id):
+    reservation_id = add_reservation(app, vehicle_id, username="admin", status="CONFIRMED")
+    rental_id = add_rental(app, vehicle_id, reservation_id, username="admin")
+
+    assert customer_client.get(f"/my/rentals/{rental_id}").status_code == 404

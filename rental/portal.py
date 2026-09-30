@@ -106,6 +106,53 @@ def reservation_detail(reservation_id: int):
     )
 
 
+def owned_rental(rental_id: int) -> tuple[Rental, Vehicle]:
+    """Load one of the signed-in customer's rentals, with its vehicle, or 404.
+
+    Copies `owned_reservation`'s shape: the owner filter is part of the query,
+    not a check afterwards, and a missing row and somebody else's row are both
+    404, never 403.
+
+    Filters on `Rental.customer_id`, not `user_id` -- the rentals table names
+    the column differently from the reservations table.
+    """
+    db = get_session()
+    row = db.execute(
+        select(Rental, Vehicle)
+        .join(Vehicle, Vehicle.id == Rental.vehicle_id)
+        .where(Rental.id == rental_id)
+        .where(Rental.customer_id == current_user().id)
+    ).first()
+    if row is None:
+        abort(404)
+    return row[0], row[1]
+
+
+@bp.route("/rentals")
+@customer_required
+def rentals():
+    """Every rental this customer has had, newest first."""
+    db = get_session()
+    rows = db.execute(
+        select(Rental, Vehicle)
+        .join(Vehicle, Vehicle.id == Rental.vehicle_id)
+        .where(Rental.customer_id == current_user().id)
+        .order_by(Rental.actual_pickup.desc(), Rental.id.desc())
+    ).all()
+    return render_template("customer/rentals.html", rentals=rows)
+
+
+@bp.route("/rentals/<int:rental_id>")
+@customer_required
+def rental_detail(rental_id: int):
+    """One rental, with any late fee shown as its own line.
+
+    A customer seeing a larger total than they booked is owed the reason.
+    """
+    rental, vehicle = owned_rental(rental_id)
+    return render_template("customer/rental_detail.html", rental=rental, vehicle=vehicle)
+
+
 def can_cancel(reservation: Reservation) -> bool:
     """A reservation may be called off any time before pickup, not after."""
     return reservation.status in ("PENDING", "CONFIRMED") and reservation.pickup_at > now()
