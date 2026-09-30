@@ -154,7 +154,7 @@ def test_start_is_refused_on_a_pending_reservation(admin_client, app, vehicle_id
         assert get_session().query(Rental).count() == 0
 
 
-def test_a_vehicle_cannot_be_handed_over_twice(admin_client, app, vehicle_id):
+def test_the_same_reservation_cannot_be_started_twice(admin_client, app, vehicle_id):
     reservation_id = add_reservation(app, vehicle_id, status="CONFIRMED")
     admin_client.post(f"/admin/reservations/{reservation_id}/start")
 
@@ -165,6 +165,23 @@ def test_a_vehicle_cannot_be_handed_over_twice(admin_client, app, vehicle_id):
     assert "already" in response.get_data(as_text=True).lower()
     with app.app_context():
         assert get_session().query(Rental).count() == 1
+
+
+def test_a_vehicle_cannot_be_handed_over_twice(admin_client, app, vehicle_id):
+    # Two CONFIRMED reservations on one vehicle that do not overlap -- today's
+    # and next week's -- so nothing upstream refused them. The vehicle itself is
+    # still only one vehicle, and it is already out.
+    out_now = add_reservation(app, vehicle_id, status="CONFIRMED")
+    next_week = add_reservation(app, vehicle_id, status="CONFIRMED", starts_in_days=10)
+    admin_client.post(f"/admin/reservations/{out_now}/start")
+
+    response = admin_client.post(f"/admin/reservations/{next_week}/start", follow_redirects=True)
+
+    assert "already" in response.get_data(as_text=True).lower()
+    with app.app_context():
+        db = get_session()
+        assert db.query(Rental).count() == 1
+        assert db.get(Reservation, next_week).status == "CONFIRMED"
 
 
 def test_an_on_time_return_closes_everything_with_no_late_fee(admin_client, app, vehicle_id):

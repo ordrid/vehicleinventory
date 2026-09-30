@@ -62,6 +62,7 @@ def mark_returned(rental_id: int):
     try:
         change = complete_rental(reservation.status, rental.status)
     except TransitionError as error:
+        db.rollback()
         flash(str(error), "warning")
         return redirect(url_for("admin_rentals.index"))
 

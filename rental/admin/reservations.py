@@ -118,7 +118,13 @@ def start(reservation_id: int):
     """Hand over the keys: create the ACTIVE rental and send the vehicle out.
 
     Locked and re-checked the same way a booking is, so a vehicle cannot be
-    handed over twice by two admins clicking at once.
+    handed over twice -- neither on the same reservation, nor on a second
+    reservation while the vehicle is still out, nor by two admins clicking at
+    once. The two checks are separate properties: `Rental.reservation_id` is
+    unique, which stops only the first of those, so the vehicle's own ACTIVE
+    rental is looked up as well. Non-overlapping reservations on one vehicle are
+    perfectly legal, and booking-time overlap checks say nothing about whether
+    the vehicle came back.
     """
     reservation = load_reservation(reservation_id)
     db = get_session()
@@ -129,6 +135,20 @@ def start(reservation_id: int):
         db.rollback()
         flash(
             f"Reservation {reservation.reservation_number} has already been handed over.",
+            "warning",
+        )
+        return redirect(url_for("admin_reservations.queue"))
+
+    out_already = db.scalars(
+        select(Rental)
+        .where(Rental.vehicle_id == reservation.vehicle_id)
+        .where(Rental.status == "ACTIVE")
+    ).first()
+    if out_already is not None:
+        db.rollback()
+        flash(
+            f"That vehicle is already out on rental {out_already.rental_number}. "
+            "It has to come back before it can be handed over again.",
             "warning",
         )
         return redirect(url_for("admin_reservations.queue"))
