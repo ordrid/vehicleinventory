@@ -144,6 +144,67 @@ def test_the_cancel_button_is_gone_once_pickup_has_passed(customer_client, app, 
     assert "contact the office" in body.lower()
 
 
+def test_cancel_is_refused_once_the_vehicle_has_been_handed_over(
+    customer_client, admin_client, app, vehicle_id
+):
+    """An early collection leaves pickup_at in the future while the car is out.
+
+    Cancelling then would be unrecoverable: the domain permits no
+    CANCELLED -> COMPLETED transition, so the rental could never be closed and
+    no late fee could ever be charged.
+    """
+    reservation_id = add_reservation(app, vehicle_id, status="CONFIRMED")
+    assert admin_client.post(f"/admin/reservations/{reservation_id}/start").status_code == 302
+
+    response = customer_client.post(
+        f"/my/reservations/{reservation_id}/cancel", follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert "contact the office" in response.get_data(as_text=True).lower()
+    with app.app_context():
+        db = get_session()
+        assert db.get(Reservation, reservation_id).status == "CONFIRMED"
+        assert db.query(Rental).one().status == "ACTIVE"
+        assert db.get(Vehicle, vehicle_id).status == "RENTED"
+
+
+def test_the_cancel_button_is_gone_once_the_vehicle_has_been_handed_over(
+    customer_client, admin_client, app, vehicle_id
+):
+    reservation_id = add_reservation(app, vehicle_id, status="CONFIRMED")
+    admin_client.post(f"/admin/reservations/{reservation_id}/start")
+
+    body = customer_client.get(f"/my/reservations/{reservation_id}").get_data(as_text=True)
+
+    assert "/cancel" not in body
+    assert "contact the office" in body.lower()
+
+
+def test_cancelling_leaves_a_vehicle_in_maintenance_in_maintenance(
+    customer_client, app, vehicle_id
+):
+    """The customer-reachable half of the MAINTENANCE release bug.
+
+    Releasing a reservation writes a literal AVAILABLE. A car that went into
+    the workshop after the booking was made must not be put back on offer by
+    the customer calling the booking off.
+    """
+    reservation_id = add_reservation(app, vehicle_id, status="CONFIRMED")
+    with app.app_context():
+        db = get_session()
+        db.get(Vehicle, vehicle_id).status = "MAINTENANCE"
+        db.commit()
+
+    response = customer_client.post(f"/my/reservations/{reservation_id}/cancel")
+
+    assert response.status_code == 302
+    with app.app_context():
+        db = get_session()
+        assert db.get(Reservation, reservation_id).status == "CANCELLED"
+        assert db.get(Vehicle, vehicle_id).status == "MAINTENANCE"
+
+
 def test_cancel_404s_on_another_customers_booking(customer_client, app, vehicle_id):
     reservation_id = add_reservation(app, vehicle_id, username="admin")
 
@@ -266,22 +327,29 @@ def test_profile_saves_a_change(customer_client, app):
 
 
 def test_profile_rejects_an_email_already_taken_by_someone_else(customer_client, app):
-    customer_client.post(
+    response = customer_client.post(
         "/my/profile",
         data={"full_name": "Maria Santos", "email": "admin@example.com", "phone": "0917 000 0001"},
     )
 
+    # The form is re-rendered with the error, not redirected and not a 500:
+    # asserting only that the stored email is unchanged would pass even if the
+    # route did not exist.
+    assert response.status_code == 200
+    assert "already in use" in response.get_data(as_text=True)
     with app.app_context():
         user = get_session().query(User).filter_by(username="maria").one()
         assert user.email == "maria@example.com"
 
 
 def test_profile_rejects_a_malformed_email(customer_client, app):
-    customer_client.post(
+    response = customer_client.post(
         "/my/profile",
         data={"full_name": "Maria Santos", "email": "not-an-email", "phone": "0917 000 0001"},
     )
 
+    assert response.status_code == 200
+    assert "valid email" in response.get_data(as_text=True)
     with app.app_context():
         assert get_session().query(User).filter_by(username="maria").one().email == "maria@example.com"
 

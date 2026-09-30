@@ -8,7 +8,7 @@ from decimal import Decimal
 import pytest
 
 from rental.db import get_session
-from rental.models import RentalRates, Reservation, User, Vehicle
+from rental.models import Maintenance, RentalRates, Reservation, User, Vehicle
 
 JAN10 = "2026-01-10T09:00"
 JAN12 = "2026-01-12T09:00"
@@ -235,6 +235,38 @@ def test_confirm_refuses_a_window_that_was_taken_in_the_meantime(
     assert "just booked" in response.get_data(as_text=True)
     with app.app_context():
         assert get_session().query(Reservation).count() == 1
+
+
+def test_confirm_refuses_a_window_covered_by_an_open_maintenance_record(
+    customer_client, vehicle_id, app
+):
+    """`Maintenance.blocks_booking` is what stops a booking over workshop dates.
+
+    The vehicle's own status column stays AVAILABLE here on purpose: the open
+    maintenance record alone has to be enough.
+    """
+    with app.app_context():
+        db = get_session()
+        db.add(
+            Maintenance(
+                vehicle_id=vehicle_id,
+                description="Brake overhaul",
+                start_date=date(2026, 1, 11),
+                expected_end_date=date(2026, 1, 13),
+                status="SCHEDULED",
+            )
+        )
+        db.commit()
+
+    response = customer_client.post(
+        f"/book/{vehicle_id}/confirm",
+        data=window(pickup_location="Main office"),
+        follow_redirects=True,
+    )
+
+    assert "just booked" in response.get_data(as_text=True)
+    with app.app_context():
+        assert get_session().query(Reservation).count() == 0
 
 
 def test_confirm_refuses_an_unusable_window(customer_client, vehicle_id, app):

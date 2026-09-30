@@ -10,7 +10,7 @@ import pytest
 from rental import scheduling
 from rental.db import get_session
 from rental.domain.availability import CONFLICT, INACTIVE, MAINTENANCE, Interval
-from rental.models import Rental, RentalRates, Reservation, User, Vehicle
+from rental.models import Maintenance, Rental, RentalRates, Reservation, User, Vehicle
 
 
 def make_vehicle(db, **overrides) -> Vehicle:
@@ -151,6 +151,55 @@ def test_blocked_intervals_ignores_a_completed_rental(seeded):
     db.commit()
 
     assert scheduling.blocked_intervals(db, vehicle) == []
+
+
+def test_blocked_intervals_includes_an_open_maintenance_window(seeded):
+    """Dates, inclusive of the last maintenance day, become one blocked Interval."""
+    db, vehicle, customer = seeded
+    db.add(
+        Maintenance(
+            vehicle_id=vehicle.id,
+            description="Brake overhaul",
+            start_date=date(2026, 1, 10),
+            expected_end_date=date(2026, 1, 11),
+            status="SCHEDULED",
+        )
+    )
+    db.commit()
+
+    # 10 Jan 00:00 up to but not including 12 Jan 00:00: the whole of the 11th
+    # is off the road.
+    assert scheduling.blocked_intervals(db, vehicle) == [
+        Interval(datetime(2026, 1, 10), datetime(2026, 1, 12))
+    ]
+
+
+def test_blocked_intervals_prefers_the_actual_end_date_and_ignores_a_completed_record(seeded):
+    db, vehicle, customer = seeded
+    db.add(
+        Maintenance(
+            vehicle_id=vehicle.id,
+            description="Came back early",
+            start_date=date(2026, 1, 10),
+            expected_end_date=date(2026, 1, 20),
+            actual_end_date=date(2026, 1, 11),
+            status="IN_PROGRESS",
+        )
+    )
+    db.add(
+        Maintenance(
+            vehicle_id=vehicle.id,
+            description="Last year's service",
+            start_date=date(2026, 1, 20),
+            expected_end_date=date(2026, 1, 22),
+            status="COMPLETED",
+        )
+    )
+    db.commit()
+
+    assert scheduling.blocked_intervals(db, vehicle) == [
+        Interval(datetime(2026, 1, 10), datetime(2026, 1, 12))
+    ]
 
 
 def test_exclude_reservation_id_drops_only_that_reservation(seeded):

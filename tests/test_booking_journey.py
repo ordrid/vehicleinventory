@@ -95,9 +95,10 @@ def test_a_booking_travels_from_browse_to_a_completed_late_rental(
         rental_id = rental.id
         assert rental.status == "ACTIVE"
         assert db.get(Vehicle, fleet).status == "RENTED"
-        # The rental started "now"; the vehicle was due back at the booked time.
-        rental.expected_return = return_at
-        db.commit()
+        # `start` already set expected_return from the reservation, which is the
+        # booked return time -- so the vehicle is already overdue with nothing
+        # fabricated. Every step of this test stays an HTTP request.
+        assert rental.expected_return == return_at
 
     # 6. The customer can see it out.
     assert "RNT-00001" in customer_client.get("/my/rentals").get_data(as_text=True)

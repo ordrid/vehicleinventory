@@ -18,8 +18,6 @@ from flask import (
     request,
     url_for,
 )
-from sqlalchemy import select
-
 from . import scheduling
 from .auth import current_role, current_user, customer_required
 from .db import get_session
@@ -194,8 +192,20 @@ def confirm(vehicle_id: int):
     db = get_session()
     # Serialises booking attempts for this one vehicle. Postgres honours the
     # lock; SQLite ignores the clause and gets the same guarantee from being
-    # single-writer.
-    db.execute(select(Vehicle).where(Vehicle.id == vehicle.id).with_for_update())
+    # single-writer -- which also means no test can exercise any of this.
+    #
+    # `db.refresh` rather than a discarded `select(...).with_for_update()`: the
+    # bare select does lock the row, but it returns the identity-map instance
+    # without `populate_existing`, so `availability_for` would go on reading
+    # `vehicle.status` and `vehicle.is_active` from the pre-lock snapshot. Same
+    # lock, attributes repopulated.
+    #
+    # The assumed isolation level is READ COMMITTED -- Neon's default, but
+    # nothing in this codebase or its config pins it, and the re-check below
+    # depends on it: a waiter that acquires the lock must then see the
+    # competitor's committed reservation. Under REPEATABLE READ this would raise
+    # a serialization failure instead.
+    db.refresh(vehicle, with_for_update=True)
 
     verdict = scheduling.availability_for(db, vehicle, interval)
     if not verdict.ok:

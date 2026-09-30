@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask import Blueprint, abort, flash, redirect, render_template, url_for
 from sqlalchemy import func, select
 
+from .admin.reservations import apply_change
 from .auth import current_user, customer_required
 from .clock import now
 from .db import get_session
@@ -154,9 +155,33 @@ def rental_detail(rental_id: int):
     return render_template("customer/rental_detail.html", rental=rental, vehicle=vehicle)
 
 
+CANNOT_CANCEL = "This booking can no longer be cancelled online. Please contact the office."
+
+
+def handed_over(db, reservation: Reservation) -> Rental | None:
+    """The rental this reservation's keys were handed over on, if there is one.
+
+    `admin_reservations.start` will hand over a vehicle *before* the booked
+    pickup time and leaves the reservation CONFIRMED, so "pickup is still in the
+    future" does not mean "the car is still on the lot".
+    """
+    return db.scalars(select(Rental).where(Rental.reservation_id == reservation.id)).first()
+
+
 def can_cancel(reservation: Reservation) -> bool:
-    """A reservation may be called off any time before pickup, not after."""
-    return reservation.status in ("PENDING", "CONFIRMED") and reservation.pickup_at > now()
+    """A reservation may be called off before pickup, and only while it is unstarted.
+
+    Cancelling a reservation whose vehicle is already out would be
+    unrecoverable: `domain/lifecycle.py` permits no CANCELLED -> COMPLETED
+    transition, so the rental could never be closed, no late fee could ever be
+    charged, and the vehicle would read AVAILABLE while it was physically out.
+    Only a manual database edit would clear it.
+    """
+    if reservation.status not in ("PENDING", "CONFIRMED"):
+        return False
+    if reservation.pickup_at <= now():
+        return False
+    return handed_over(get_session(), reservation) is None
 
 
 @bp.route("/reservations/<int:reservation_id>/cancel", methods=["POST"])
@@ -166,26 +191,39 @@ def cancel(reservation_id: int):
     reservation, vehicle = owned_reservation(reservation_id)
     db = get_session()
 
-    if reservation.pickup_at <= now():
-        flash(
-            "This booking can no longer be cancelled online. Please contact the office.",
-            "warning",
-        )
-        return redirect(url_for("portal.reservation_detail", reservation_id=reservation.id))
+    # The same lock `admin_reservations.start` takes, on the same row, so the
+    # customer clicking Cancel and the admin clicking Start cannot both win.
+    # `db.refresh` rather than a discarded `select(...).with_for_update()`: the
+    # bare select locks the row but returns the identity-map instance untouched,
+    # so the re-check below would read the pre-lock snapshot.
+    # The assumed isolation level is READ COMMITTED -- Neon's default, but
+    # nothing in this codebase or its config pins it, and this re-check depends
+    # on it: once the lock is acquired, the handover query must see the admin's
+    # committed Rental. On SQLite no FOR UPDATE is emitted at all, so no test
+    # can exercise the concurrent case; this comment is all a future reader has.
+    db.refresh(vehicle, with_for_update=True)
+    db.refresh(reservation)
+
+    if reservation.pickup_at <= now() or handed_over(db, reservation) is not None:
+        db.rollback()
+        flash(CANNOT_CANCEL, "warning")
+        return redirect(url_for("portal.reservation_detail", reservation_id=reservation_id))
 
     try:
         change = cancel_reservation(reservation.status)
     except TransitionError as error:
         # A stale page, not a bug: the booking moved on while it was open.
+        db.rollback()
         flash(str(error), "warning")
-        return redirect(url_for("portal.reservation_detail", reservation_id=reservation.id))
+        return redirect(url_for("portal.reservation_detail", reservation_id=reservation_id))
 
-    reservation.status = change.reservation_status
-    vehicle.status = change.vehicle_status
-    db.commit()
+    # Through `apply_change` rather than writing the two statuses inline: it is
+    # the one place a StateChange becomes writes, which is also what keeps the
+    # MAINTENANCE guard in a single location.
+    apply_change(db, reservation, change)
 
     flash(f"Reservation {reservation.reservation_number} was cancelled.", "success")
-    return redirect(url_for("portal.reservation_detail", reservation_id=reservation.id))
+    return redirect(url_for("portal.reservation_detail", reservation_id=reservation_id))
 
 
 @bp.route("/profile", methods=["GET", "POST"])

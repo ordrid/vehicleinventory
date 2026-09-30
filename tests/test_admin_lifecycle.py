@@ -184,6 +184,27 @@ def test_a_vehicle_cannot_be_handed_over_twice(admin_client, app, vehicle_id):
         assert db.get(Reservation, next_week).status == "CONFIRMED"
 
 
+def test_start_is_refused_on_a_vehicle_in_maintenance(admin_client, app, vehicle_id):
+    """A car in the workshop cannot be handed over, whatever the reservation says."""
+    reservation_id = add_reservation(app, vehicle_id, status="CONFIRMED")
+    with app.app_context():
+        db = get_session()
+        db.get(Vehicle, vehicle_id).status = "MAINTENANCE"
+        db.commit()
+
+    response = admin_client.post(
+        f"/admin/reservations/{reservation_id}/start", follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert "under maintenance and cannot be handed over" in response.get_data(as_text=True)
+    with app.app_context():
+        db = get_session()
+        assert db.query(Rental).count() == 0
+        assert db.get(Reservation, reservation_id).status == "CONFIRMED"
+        assert db.get(Vehicle, vehicle_id).status == "MAINTENANCE"
+
+
 def test_an_on_time_return_closes_everything_with_no_late_fee(admin_client, app, vehicle_id):
     reservation_id = add_reservation(app, vehicle_id, status="CONFIRMED", starts_in_days=-1)
     admin_client.post(f"/admin/reservations/{reservation_id}/start")

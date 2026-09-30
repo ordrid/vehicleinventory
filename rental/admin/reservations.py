@@ -47,7 +47,15 @@ def apply_change(db, reservation: Reservation, change: StateChange, rental=None)
     of the five.
     """
     reservation.status = change.reservation_status
-    db.get(Vehicle, reservation.vehicle_id).status = change.vehicle_status
+
+    vehicle = db.get(Vehicle, reservation.vehicle_id)
+    # Releasing a reservation writes a literal AVAILABLE. A vehicle in the
+    # workshop is not returned to service by a reservation moving, so the write
+    # is skipped: MAINTENANCE is cleared by the maintenance record it came from,
+    # never as a side effect of a booking being cancelled, rejected or closed.
+    if vehicle.status != "MAINTENANCE":
+        vehicle.status = change.vehicle_status
+
     if change.rental_status is not None and rental is not None:
         rental.status = change.rental_status
     db.commit()
@@ -125,10 +133,37 @@ def start(reservation_id: int):
     rental is looked up as well. Non-overlapping reservations on one vehicle are
     perfectly legal, and booking-time overlap checks say nothing about whether
     the vehicle came back.
+
+    A vehicle in the workshop is refused outright: handing over a car that is
+    not roadworthy is not a data-tidiness problem.
     """
     reservation = load_reservation(reservation_id)
     db = get_session()
-    db.execute(select(Vehicle).where(Vehicle.id == reservation.vehicle_id).with_for_update())
+    vehicle = db.get(Vehicle, reservation.vehicle_id)
+
+    # Takes the lock AND repopulates the row. A bare
+    # `select(...).with_for_update()` does lock the row, but it returns the
+    # identity-map instance untouched (no `populate_existing`), so every
+    # attribute read afterwards would still be the pre-lock snapshot.
+    # The assumed isolation level is READ COMMITTED -- Neon's default, but
+    # nothing in this codebase or its config pins it, and the re-checks below
+    # depend on it: a waiter that acquires the lock must then see the
+    # competitor's committed rows. Under REPEATABLE READ this would raise a
+    # serialization failure instead. On SQLite no FOR UPDATE is emitted at all,
+    # so no test can exercise any of this; the single-writer guarantee stands in
+    # for the lock and this comment stands in for the test.
+    db.refresh(vehicle, with_for_update=True)
+    # `reservation.status` was also read before the lock.
+    db.refresh(reservation)
+
+    if vehicle.status == "MAINTENANCE":
+        db.rollback()
+        flash(
+            f"{vehicle.plate_number} is under maintenance and cannot be handed over. "
+            "Close the maintenance record first.",
+            "warning",
+        )
+        return redirect(url_for("admin_reservations.queue"))
 
     existing = db.scalars(select(Rental).where(Rental.reservation_id == reservation.id)).first()
     if existing is not None:
