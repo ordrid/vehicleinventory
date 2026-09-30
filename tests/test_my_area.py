@@ -237,3 +237,58 @@ def test_rental_detail_404s_on_another_customers_rental(customer_client, app, ve
     rental_id = add_rental(app, vehicle_id, reservation_id, username="admin")
 
     assert customer_client.get(f"/my/rentals/{rental_id}").status_code == 404
+
+
+def test_profile_shows_the_customers_current_details(customer_client):
+    body = customer_client.get("/my/profile").get_data(as_text=True)
+
+    assert "Maria Santos" in body
+    assert "maria@example.com" in body
+    assert "0917 000 0001" in body
+
+
+def test_profile_saves_a_change(customer_client, app):
+    response = customer_client.post(
+        "/my/profile",
+        data={
+            "full_name": "Maria Cruz",
+            "email": "maria.cruz@example.com",
+            "phone": "0917 111 2222",
+        },
+        follow_redirects=True,
+    )
+
+    assert "updated" in response.get_data(as_text=True).lower()
+    with app.app_context():
+        user = get_session().query(User).filter_by(username="maria").one()
+        assert user.full_name == "Maria Cruz"
+        assert user.email == "maria.cruz@example.com"
+
+
+def test_profile_rejects_an_email_already_taken_by_someone_else(customer_client, app):
+    customer_client.post(
+        "/my/profile",
+        data={"full_name": "Maria Santos", "email": "admin@example.com", "phone": "0917 000 0001"},
+    )
+
+    with app.app_context():
+        user = get_session().query(User).filter_by(username="maria").one()
+        assert user.email == "maria@example.com"
+
+
+def test_profile_rejects_a_malformed_email(customer_client, app):
+    customer_client.post(
+        "/my/profile",
+        data={"full_name": "Maria Santos", "email": "not-an-email", "phone": "0917 000 0001"},
+    )
+
+    with app.app_context():
+        assert get_session().query(User).filter_by(username="maria").one().email == "maria@example.com"
+
+
+def test_the_customer_navigation_links_to_every_own_page(customer_client):
+    body = customer_client.get("/my").get_data(as_text=True)
+
+    assert "/my/reservations" in body
+    assert "/my/rentals" in body
+    assert "/my/profile" in body

@@ -8,22 +8,22 @@
 </div>
 
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-  <div class="stat-card">
+  <a class="stat-card" href="{{ url_for('public.browse') }}">
     <p class="stat-label">Available Vehicles</p>
     <p class="stat-value">{{ available }}</p>
-  </div>
-  <div class="stat-card">
+  </a>
+  <a class="stat-card" href="{{ url_for('portal.reservations') }}">
     <p class="stat-label">My Reservations</p>
     <p class="stat-value">{{ my_reservations }}</p>
-  </div>
-  <div class="stat-card">
+  </a>
+  <a class="stat-card" href="{{ url_for('portal.rentals') }}">
     <p class="stat-label">Active Rental</p>
     <p class="stat-value">{{ active_rental }}</p>
-  </div>
-  <div class="stat-card">
+  </a>
+  <a class="stat-card" href="{{ url_for('portal.rentals') }}">
     <p class="stat-label">Total Rentals</p>
     <p class="stat-value">{{ total_rentals }}</p>
-  </div>
+  </a>
 </div>
 
 <div class="card mt-6 p-6">

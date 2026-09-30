@@ -9,7 +9,8 @@ from .auth import current_user, customer_required
 from .clock import now
 from .db import get_session
 from .domain.lifecycle import TransitionError, cancel_reservation
-from .models import Rental, Reservation, Vehicle
+from .forms import ProfileForm
+from .models import Rental, Reservation, User, Vehicle
 
 bp = Blueprint("portal", __name__, url_prefix="/my")
 
@@ -185,3 +186,28 @@ def cancel(reservation_id: int):
 
     flash(f"Reservation {reservation.reservation_number} was cancelled.", "success")
     return redirect(url_for("portal.reservation_detail", reservation_id=reservation.id))
+
+
+@bp.route("/profile", methods=["GET", "POST"])
+@customer_required
+def profile():
+    """The customer's own contact details."""
+    db = get_session()
+    user = current_user()
+    form = ProfileForm(obj=user)
+
+    if form.validate_on_submit():
+        taken = db.scalars(
+            select(User).where(User.email == form.email.data).where(User.id != user.id)
+        ).first()
+        if taken is not None:
+            form.email.errors.append("That email address is already in use.")
+        else:
+            user.full_name = form.full_name.data
+            user.email = form.email.data
+            user.phone = form.phone.data
+            db.commit()
+            flash("Your profile was updated.", "success")
+            return redirect(url_for("portal.profile"))
+
+    return render_template("customer/profile.html", form=form, user=user)
