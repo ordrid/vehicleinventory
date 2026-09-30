@@ -1,12 +1,15 @@
 // Live price preview.
 //
-// The browser does no arithmetic. Pricing -- the hourly cap, the per-day
-// extras, the fee table -- lives in rental/domain/pricing.py and is reached
-// through /api/quote, so there is exactly one implementation to keep right.
-// `total` and every line `amount` arrive as JSON strings; they are rendered
-// exactly as given, never parsed or reformatted, and no currency symbol is
-// added here -- the peso sign is already embedded in each line's `detail`
-// string by the server.
+// The browser does no pricing arithmetic. Pricing -- the hourly cap, the
+// per-day extras, the fee table -- lives in rental/domain/pricing.py and is
+// reached through /api/quote, so there is exactly one implementation to keep
+// right. `total` and each line's `amount` arrive as JSON strings and are
+// formatted here to match the server's own `₱{:,.2f}` display formatting
+// (see rental/templates/partials/_quote_lines.html) -- this is display
+// formatting of a value the server already computed and finalised, not a
+// price calculation, and it never feeds back into a request. Each line's
+// `detail` string is rendered verbatim: the server already formatted it,
+// peso sign included, so reformatting it here would double it up.
 //
 // The page is fully usable without this file: whenever the URL carries dates,
 // the same figures are already server-rendered.
@@ -17,6 +20,13 @@
 
   var timer = null;
   var latest = 0;
+
+  function peso(value) {
+    return '₱' + Number(value).toLocaleString('en-PH', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
 
   function render(data) {
     if (!data.available) {
@@ -39,7 +49,7 @@
       left.appendChild(detail);
       var right = document.createElement('td');
       right.className = 'py-2 text-right font-semibold text-ink';
-      right.textContent = line[2];
+      right.textContent = peso(line[2]);
       tr.appendChild(left);
       tr.appendChild(right);
       return tr;
@@ -56,7 +66,7 @@
       '<td class="pt-3 text-sm font-semibold text-ink">Total</td>' +
       '<td class="pt-3 text-right"><span class="rate" data-quote-total></span></td>';
     body.appendChild(totalRow);
-    totalRow.querySelector('[data-quote-total]').textContent = data.total;
+    totalRow.querySelector('[data-quote-total]').textContent = peso(data.total);
   }
 
   function refresh() {
