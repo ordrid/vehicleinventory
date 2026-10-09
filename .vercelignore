@@ -11,3 +11,6 @@ __pycache__/
 # CSS build sources. Only the built rental/static/css/output.css is served,
 # and it is committed, so Vercel needs no build step.
 rental/static/src/
+
+# The Android app's project. Only the APK built from it talks to the site.
+android/

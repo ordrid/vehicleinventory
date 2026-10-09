@@ -342,33 +342,43 @@ raising an error on the next query.
 ## The Android app (APK)
 
 The APK is a Trusted Web Activity: a thin Android shell, built with Google's
-[Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap), that opens the
-deployed site full-screen in Chrome. Flask and the database stay on Vercel, so
-every change to the site reaches the app without a new APK. The site's half
-of the arrangement is already in place: `rental/static/manifest.webmanifest`
-with its icons, and `/.well-known/assetlinks.json` (`rental/android.py`).
+[Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap), that opens
+https://vehicleinventory.vercel.app full-screen in Chrome. Flask and the
+database stay on Vercel, so every change to the site reaches the app without
+a new APK. The pieces:
 
-1. Deploy the site, then build the app from its manifest:
+- `rental/static/manifest.webmanifest` and its icons, which the app is built from.
+- `/.well-known/assetlinks.json` (`rental/android.py`), which vouches for the
+  app. It reads `ANDROID_PACKAGE_NAME` (`com.ordrid.vehiclerental`) and
+  `ANDROID_CERT_FINGERPRINTS` from the Vercel environment; until both are set
+  it returns `[]`, and Android shows Chrome's address bar across the app.
+  Comma-separate several fingerprints: Play App Signing adds a second key,
+  shown in the Play Console.
+- `android/`, the Gradle project Bubblewrap generated from
+  `android/twa-manifest.json`.
+- The signing key, **outside the repository** at
+  `~/.android-keys/vehicle-rental/` (`release.keystore`, and `passwords.env`
+  holding its password). Back both up: every update to an installed app must
+  be signed with the same key, and a lost key cannot be replaced.
 
-   ```bash
-   npm i -g @bubblewrap/cli
-   bubblewrap init --manifest https://<your-app>.vercel.app/static/manifest.webmanifest
-   bubblewrap build
-   ```
+To rebuild after changing the icon, colours or name:
 
-   `init` asks for a package name (e.g. `com.yourname.rental`) and creates a
-   signing key. **Keep the key and its passwords**: every later update must
-   be signed with the same key. `build` writes `app-release-signed.apk`.
-2. Print the key's fingerprint with `bubblewrap fingerprint list`, then add
-   two environment variables in Vercel and redeploy:
-   - `ANDROID_PACKAGE_NAME` — the package name from step 1
-   - `ANDROID_CERT_FINGERPRINTS` — the SHA-256 fingerprint. Comma-separate
-     several; Play App Signing adds a second key, shown in the Play Console.
-3. Install with `adb install app-release-signed.apk`, or copy the file to the
-   phone.
+```bash
+cd android
+npx @bubblewrap/cli update            # bumps the version, regenerates the project
+set -a; . ~/.android-keys/vehicle-rental/passwords.env; set +a
+npx @bubblewrap/cli build --skipPwaValidation
+```
 
-Until step 2 is done, `assetlinks.json` returns `[]` and the app still works,
-but Android shows Chrome's address bar across the top of it.
+`build` writes `app-release-signed.apk` (install with `adb install` or copy
+it to the phone) and `app-release-bundle.aab` (for the Play Store). Two
+things the generated project needs on this machine:
+
+- `update` writes `jcenter()` back into `android/build.gradle`. JCenter has
+  shut down, so change both to `mavenCentral()` before building.
+- On NixOS, the scripts in the SDK's `build-tools/*/` start with
+  `#!/bin/bash`, which does not exist; they were changed to
+  `#!/usr/bin/env bash`. A fresh SDK download needs the same edit.
 
 ## Project layout
 

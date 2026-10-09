@@ -1,0 +1,9 @@
+# Build output. The signed APK and bundle are rebuilt with `bubblewrap build`;
+# the signing key lives outside the repository entirely.
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+*.idsig
