@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
-from . import auth, booking, cli, db, portal, public, reports
+from . import android, auth, booking, cli, db, portal, public, reports
 from .admin import dashboard as admin_dashboard
 from .admin import fleet as admin_fleet
 from .admin import rates as admin_rates
@@ -38,6 +38,9 @@ def create_app(config: dict | None = None) -> Flask:
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
     app.config["DATABASE_URL"] = db.get_database_url()
+    # Both come from `bubblewrap init`; see android.asset_links.
+    app.config["ANDROID_PACKAGE_NAME"] = os.environ.get("ANDROID_PACKAGE_NAME", "")
+    app.config["ANDROID_CERT_FINGERPRINTS"] = os.environ.get("ANDROID_CERT_FINGERPRINTS", "")
     if config:
         app.config.update(config)
 
@@ -45,6 +48,7 @@ def create_app(config: dict | None = None) -> Flask:
     CSRFProtect(app)
 
     db.init_app(app)
+    app.register_blueprint(android.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(public.bp)
     app.register_blueprint(booking.bp)
@@ -74,7 +78,8 @@ def register_password_change_gate(app: Flask) -> None:
         # Without the `static` exemption the change-password page would render
         # with no stylesheet, because the request for output.css would itself
         # be redirected.
-        if request.endpoint in ("auth.change_password", "auth.logout", "static"):
+        exempt = ("auth.change_password", "auth.logout", "static", "android.asset_links")
+        if request.endpoint in exempt:
             return None
         return redirect(url_for("auth.change_password"))
 

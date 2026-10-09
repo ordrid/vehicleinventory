@@ -339,6 +339,37 @@ short-lived and must not hold connections open between requests, and
 `pool_pre_ping` throws away a connection Neon has already closed instead of
 raising an error on the next query.
 
+## The Android app (APK)
+
+The APK is a Trusted Web Activity: a thin Android shell, built with Google's
+[Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap), that opens the
+deployed site full-screen in Chrome. Flask and the database stay on Vercel, so
+every change to the site reaches the app without a new APK. The site's half
+of the arrangement is already in place: `rental/static/manifest.webmanifest`
+with its icons, and `/.well-known/assetlinks.json` (`rental/android.py`).
+
+1. Deploy the site, then build the app from its manifest:
+
+   ```bash
+   npm i -g @bubblewrap/cli
+   bubblewrap init --manifest https://<your-app>.vercel.app/static/manifest.webmanifest
+   bubblewrap build
+   ```
+
+   `init` asks for a package name (e.g. `com.yourname.rental`) and creates a
+   signing key. **Keep the key and its passwords**: every later update must
+   be signed with the same key. `build` writes `app-release-signed.apk`.
+2. Print the key's fingerprint with `bubblewrap fingerprint list`, then add
+   two environment variables in Vercel and redeploy:
+   - `ANDROID_PACKAGE_NAME` — the package name from step 1
+   - `ANDROID_CERT_FINGERPRINTS` — the SHA-256 fingerprint. Comma-separate
+     several; Play App Signing adds a second key, shown in the Play Console.
+3. Install with `adb install app-release-signed.apk`, or copy the file to the
+   phone.
+
+Until step 2 is done, `assetlinks.json` returns `[]` and the app still works,
+but Android shows Chrome's address bar across the top of it.
+
 ## Project layout
 
 ```
